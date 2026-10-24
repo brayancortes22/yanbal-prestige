@@ -137,4 +137,5 @@ export interface LeadProspect {
   roleInterest: string;
   acceptedHabeasData: boolean;
   trapField?: string;
+  turnstileToken?: string;
 }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Send, CheckCircle2 } from 'lucide-react';
 import type { LeadProspect } from '../../types';
+import { TurnstileWidget } from '../common/TurnstileWidget';
 
 export const JoinForm: React.FC = () => {
   const [formData, setFormData] = useState<LeadProspect>({
@@ -9,14 +10,15 @@ export const JoinForm: React.FC = () => {
     city: '',
     roleInterest: 'consultora',
     acceptedHabeasData: false,
-    trapField: ''
+    trapField: '',
+    turnstileToken: ''
   });
   const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.trapField && formData.trapField.trim() !== '') {
-      alert('Validación de seguridad activada.');
+      alert('Validación de seguridad perimetral activada.');
       return;
     }
     setSubmitted(true);
@@ -38,7 +40,7 @@ export const JoinForm: React.FC = () => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 bg-brand-cream/60 p-6 sm:p-8 rounded-3xl border border-stone-200/60 shadow-sm">
-      {/* TRAMPA HONEYPOT INVISIBLE */}
+      {/* CAPA 1: TRAMPA HONEYPOT INVISIBLE (Regla 8) */}
       <input
         type="text"
         name="company_website"
@@ -98,6 +100,9 @@ export const JoinForm: React.FC = () => {
           <option value="cliente">Solo deseo comprar productos con asesoría personalizada</option>
         </select>
       </div>
+
+      {/* CAPA 2: CLOUDFLARE TURNSTILE INVISIBLE (Regla 8) */}
+      <TurnstileWidget onSuccess={(token) => setFormData((prev) => ({ ...prev, turnstileToken: token }))} />
 
       {/* Consentimiento Ley 1581 Habeas Data */}
       <div className="pt-2">

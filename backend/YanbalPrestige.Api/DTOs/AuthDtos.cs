@@ -18,6 +18,8 @@ public class RequestPinDto
     [Required]
     [EmailAddress]
     public string Email { get; set; } = string.Empty;
+
+    public string? TurnstileToken { get; set; }
 }
 
 public class ResetPasswordWithPinDto
@@ -33,6 +35,8 @@ public class ResetPasswordWithPinDto
     [Required]
     [MinLength(6)]
     public string NewPassword { get; set; } = string.Empty;
+
+    public string? TurnstileToken { get; set; }
 }
 
 public class AuthResponseDto

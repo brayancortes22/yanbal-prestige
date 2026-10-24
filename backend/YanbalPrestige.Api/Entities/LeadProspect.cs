@@ -30,6 +30,7 @@ public class LeadProspect
     [Column("acepto_habeas_data")]
     public bool AcceptedHabeasData { get; set; }
 
+    // Honeypot: Captura tanto company_website como trapField (Regla 8)
     [NotMapped]
     [JsonPropertyName("company_website")]
     public string? CompanyWebsite { get; set; }
@@ -37,6 +38,11 @@ public class LeadProspect
     [NotMapped]
     [JsonPropertyName("trapField")]
     public string? TrapField { get; set; }
+
+    // Cloudflare Turnstile Invisible Token (Regla 8)
+    [NotMapped]
+    [JsonPropertyName("turnstileToken")]
+    public string? TurnstileToken { get; set; }
 
     [Column("fecha_creacion")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

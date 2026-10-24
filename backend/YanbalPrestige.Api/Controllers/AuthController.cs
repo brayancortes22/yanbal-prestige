@@ -9,10 +9,12 @@ namespace YanbalPrestige.Api.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
+    private readonly ITurnstileService _turnstileService;
 
-    public AuthController(IAuthService authService)
+    public AuthController(IAuthService authService, ITurnstileService turnstileService)
     {
         _authService = authService;
+        _turnstileService = turnstileService;
     }
 
     [HttpPost("login")]
@@ -26,6 +28,13 @@ public class AuthController : ControllerBase
     [HttpPost("request-pin")]
     public async Task<IActionResult> RequestPin([FromBody] RequestPinDto request)
     {
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var isHuman = await _turnstileService.VerifyTokenAsync(request.TurnstileToken, ip);
+        if (!isHuman)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "Validación de seguridad anti-bots fallida." });
+        }
+
         var pin = await _authService.GeneratePinAsync(request.Email);
         if (pin == null) return NotFound(new { message = "Usuario no encontrado." });
         return Ok(new { success = true, pin, message = "PIN de recuperación generado exitosamente." });
@@ -34,6 +43,13 @@ public class AuthController : ControllerBase
     [HttpPost("reset-password")]
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordWithPinDto request)
     {
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var isHuman = await _turnstileService.VerifyTokenAsync(request.TurnstileToken, ip);
+        if (!isHuman)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "Validación de seguridad anti-bots fallida." });
+        }
+
         var success = await _authService.ResetPasswordWithPinAsync(request);
         if (!success) return BadRequest(new { message = "PIN inválido o expirado." });
         return Ok(new { success = true, message = "Contraseña restablecida con éxito." });
