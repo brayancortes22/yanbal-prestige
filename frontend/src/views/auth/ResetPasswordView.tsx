@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { KeyRound, ShieldCheck, ArrowRight, MessageCircle, CheckCircle } from 'lucide-react';
 import { useConfig } from '../../context/ConfigContext';
 import type { PasswordResetRequest } from '../../types';
+import { TurnstileWidget } from '../../components/common/TurnstileWidget';
 
 export const ResetPasswordView: React.FC = () => {
   const { createResetRequest, completeResetPassword, resetRequests } = useConfig();
@@ -13,6 +14,7 @@ export const ResetPasswordView: React.FC = () => {
   const [pinInput, setPinInput] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [turnstileToken, setTurnstileToken] = useState('');
 
   const [activeRequest, setActiveRequest] = useState<PasswordResetRequest | null>(null);
   const [step, setStep] = useState<'request' | 'verify' | 'new-password' | 'success'>('request');
@@ -24,6 +26,11 @@ export const ResetPasswordView: React.FC = () => {
     setErrorMsg('');
     if (!email) {
       setErrorMsg('Por favor ingresa tu correo electrónico registrado.');
+      return;
+    }
+
+    if (!turnstileToken) {
+      setErrorMsg('Por favor complete la verificación de seguridad anti-bots.');
       return;
     }
 
@@ -47,7 +54,6 @@ export const ResetPasswordView: React.FC = () => {
 
     // Verificar si fue aprobado en segundo plano por la directora
     const currentReq = resetRequests.find((r) => r.id === activeRequest.id) || activeRequest;
-
     if (currentReq.status === 'approved' || pinInput.trim() === activeRequest.pinCode) {
       setStep('new-password');
     } else {
@@ -59,10 +65,12 @@ export const ResetPasswordView: React.FC = () => {
   const handleSavePassword = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
+
     if (newPassword.length < 6) {
-      setErrorMsg('La contraseña debe tener mínimo 6 caracteres.');
+      setErrorMsg('La contraseña debe tener al menos 6 caracteres.');
       return;
     }
+
     if (newPassword !== confirmPassword) {
       setErrorMsg('Las contraseñas no coinciden.');
       return;
@@ -75,9 +83,10 @@ export const ResetPasswordView: React.FC = () => {
   };
 
   return (
-    <div className="py-20 bg-brand-cream min-h-[80vh] flex items-center justify-center px-4 animate-fadeIn">
-      <div className="max-w-md w-full bg-white p-8 rounded-3xl border border-stone-200 shadow-2xl space-y-6">
-        
+    <div className="min-h-[80vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full bg-white rounded-3xl border border-stone-200/80 shadow-lg p-6 sm:p-8 space-y-6">
+
+        {/* Encabezado */}
         <div className="text-center space-y-2">
           <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 mx-auto flex items-center justify-center">
             <KeyRound className="w-6 h-6" />
@@ -86,25 +95,25 @@ export const ResetPasswordView: React.FC = () => {
             Recuperar Contraseña
           </h2>
           <p className="text-xs text-stone-500">
-            Sistema seguro por Código PIN de 6 dígitos (cero dependencia de servidores SMTP).
+            Plataforma Segura Yanbal Prestige — Acceso de Consultoras y Directoras
           </p>
         </div>
 
         {errorMsg && (
-          <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 text-center font-medium">
+          <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl text-center">
             {errorMsg}
           </div>
         )}
 
-        {/* Paso 1: Ingreso de correo y cédula para autodesbloqueo */}
+        {/* Paso 1: Solicitud de PIN */}
         {step === 'request' && (
           <form onSubmit={handleRequestPin} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-stone-700 mb-1">Correo Registrado</label>
+              <label className="block text-xs font-semibold text-stone-700 mb-1">Correo Electrónico Registrado *</label>
               <input
                 type="email"
                 required
-                placeholder="carolina.consultora@yanbalprestige.com"
+                placeholder="ejemplo@yanbalprestige.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 text-xs bg-stone-50/50"
@@ -127,6 +136,9 @@ export const ResetPasswordView: React.FC = () => {
                 Si coincide con tu registro, el sistema te autorizará al instante sin esperar a la Directora.
               </p>
             </div>
+
+            {/* Cloudflare Turnstile Invisible */}
+            <TurnstileWidget onSuccess={(token) => setTurnstileToken(token)} />
 
             <button
               type="submit"
