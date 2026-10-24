@@ -7,10 +7,9 @@ using YanbalPrestige.Api.Services.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Controladores y Documentación OpenAPI / Swagger
+// 1. Controladores y Documentación OpenAPI nativa de .NET 10
 builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddOpenApi();
 
 // 2. Registro de Inyección de Dependencias (Service Layer)
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -83,11 +82,10 @@ app.Use(async (context, next) =>
     await next();
 });
 
-// 8. Swagger en desarrollo y staging
+// 8. OpenAPI en desarrollo y staging
 if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Yanbal Prestige API v1"));
+    app.MapOpenApi();
 }
 
 // 9. Pipeline de Middlewares
