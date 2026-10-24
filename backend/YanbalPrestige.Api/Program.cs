@@ -1,6 +1,7 @@
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using YanbalPrestige.Api.Common.Security;
 using YanbalPrestige.Api.Data;
 using YanbalPrestige.Api.Services.Implementations;
 using YanbalPrestige.Api.Services.Interfaces;
@@ -18,13 +19,17 @@ builder.Services.AddScoped<ICrmService, CrmService>();
 builder.Services.AddScoped<ICmsService, CmsService>();
 builder.Services.AddScoped<IMediaStorageService, MediaStorageService>();
 
-// 3. Caché de salida para alta concurrencia
+// 3. Blindaje Anti-Bots Cloudflare Turnstile Invisible (Regla 8)
+builder.Services.Configure<TurnstileSettings>(builder.Configuration.GetSection(TurnstileSettings.SectionName));
+builder.Services.AddHttpClient<ITurnstileService, TurnstileService>();
+
+// 4. Caché de salida para alta concurrencia
 builder.Services.AddOutputCache(options =>
 {
     options.AddBasePolicy(b => b.Expire(TimeSpan.FromSeconds(30)));
 });
 
-// 4. Blindaje contra Fuerza Bruta y Bots (Regla 8)
+// 5. Blindaje contra Fuerza Bruta y Bots (Regla 8)
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -43,7 +48,7 @@ builder.Services.AddRateLimiter(options =>
     });
 });
 
-// 5. Configuración de Base de Datos MySQL con EF Core
+// 6. Configuración de Base de Datos MySQL con EF Core
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
     ?? "Server=localhost;Database=yanbal_prestige;User=root;Password=root;";
 
@@ -52,7 +57,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseMySQL(connectionString);
 });
 
-// 6. Política de CORS para Producción y Desarrollo
+// 7. Política de CORS para Producción y Desarrollo
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
@@ -72,7 +77,7 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// 7. Middleware de Cabeceras de Seguridad Bancaria / OWASP
+// 8. Middleware de Cabeceras de Seguridad Bancaria / OWASP
 app.Use(async (context, next) =>
 {
     context.Response.Headers.Append("X-Frame-Options", "SAMEORIGIN");
@@ -82,13 +87,13 @@ app.Use(async (context, next) =>
     await next();
 });
 
-// 8. OpenAPI en desarrollo y staging
+// 9. OpenAPI en desarrollo y staging
 if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
 {
     app.MapOpenApi();
 }
 
-// 9. Pipeline de Middlewares
+// 10. Pipeline de Middlewares
 app.UseStaticFiles(); // Servir /uploads/ directamente desde el VPS
 app.UseCors("AllowFrontend");
 app.UseRateLimiter();
@@ -96,7 +101,7 @@ app.UseOutputCache();
 app.UseAuthorization();
 app.MapControllers().RequireRateLimiting("ApiGlobalLimiter");
 
-// 10. Inicialización y Semillero Automático de Datos
+// 11. Inicialización y Semillero Automático de Datos
 using (var scope = app.Services.CreateScope())
 {
     try
