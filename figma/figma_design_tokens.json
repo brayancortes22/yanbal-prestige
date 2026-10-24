@@ -1,0 +1,39 @@
+{
+  "global": {
+    "color": {
+      "brand": {
+        "apricot": { "value": "#E85D36", "type": "color", "description": "Yanbal Luxury Orange / Apricot" },
+        "apricotHover": { "value": "#CF4C26", "type": "color" },
+        "soft": { "value": "#FDF1ED", "type": "color", "description": "Badges & subtle highlights" },
+        "cream": { "value": "#FAF8F5", "type": "color", "description": "Champagne Silk background" },
+        "dark": { "value": "#1C1917", "type": "color", "description": "Stone 900 for high-contrast text" },
+        "muted": { "value": "#78716C", "type": "color", "description": "Stone 500 for captions" }
+      },
+      "surface": {
+        "card": { "value": "#FFFFFF", "type": "color" },
+        "border": { "value": "rgba(28, 25, 23, 0.06)", "type": "color" }
+      }
+    },
+    "fontFamilies": {
+      "editorial": { "value": "Playfair Display", "type": "fontFamilies" },
+      "sans": { "value": "Plus Jakarta Sans", "type": "fontFamilies" }
+    },
+    "boxShadow": {
+      "luxuryCard": {
+        "value": {
+          "x": "0",
+          "y": "16",
+          "blur": "36",
+          "spread": "-8",
+          "color": "rgba(232, 93, 54, 0.12)",
+          "type": "dropShadow"
+        }
+      }
+    },
+    "borderRadius": {
+      "card": { "value": "24px", "type": "borderRadius" },
+      "modal": { "value": "32px", "type": "borderRadius" },
+      "pill": { "value": "9999px", "type": "borderRadius" }
+    }
+  }
+}

@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --brand-apricot: #E85D36;
+    --brand-apricot-hover: #CF4C26;
+    --brand-soft: #FDF1ED;
+    --brand-cream: #FAF8F5;
+    --brand-dark: #1C1917;
+    --brand-muted: #78716C;
+  }
+
+  body {
+    background-color: #FAF8F5;
+    color: #1C1917;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+.font-editorial {
+  font-family: 'Playfair Display', Georgia, serif;
+}
+
+.glass-surface {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(28, 25, 23, 0.06);
+}
+
+.card-luxury {
+  background: #FFFFFF;
+  border: 1px solid rgba(28, 25, 23, 0.06);
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card-luxury:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 36px -8px rgba(232, 93, 54, 0.12), 0 4px 12px -2px rgba(0, 0, 0, 0.03);
+  border-color: rgba(232, 93, 54, 0.25);
+}
+
+.hp-field {
+  position: absolute;
+  left: -9999px;
+  opacity: 0;
+  pointer-events: none;
+}
