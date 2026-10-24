@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Plus, MessageCircle, Trash2, Search, Edit3, X, Check, CalendarCheck } from 'lucide-react';
 import { ConsultantNav } from '../../components/consultant/ConsultantNav';
+import { ClientCardSkeleton } from '../../components/common/skeletons/ClientCardSkeleton';
 import { useConfig } from '../../context/ConfigContext';
 import type { ConsultantClient } from '../../types';
 
@@ -9,6 +10,7 @@ export const ConsultantClientsView: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [skinFilter, setSkinFilter] = useState('todas');
   const [catFilter, setCatFilter] = useState('todas');
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   // Formulario Crear / Editar
   const [isEditing, setIsEditing] = useState(false);
@@ -72,6 +74,12 @@ export const ConsultantClientsView: React.FC = () => {
       ...c,
       lastContactDate: new Date().toISOString().split('T')[0],
     });
+  };
+
+  const handleFilterChange = (setter: (v: string) => void, val: string) => {
+    setIsTransitioning(true);
+    setter(val);
+    setTimeout(() => setIsTransitioning(false), 200);
   };
 
   const filteredClients = useMemo(() => {
@@ -200,7 +208,9 @@ export const ConsultantClientsView: React.FC = () => {
               type="text"
               placeholder="Buscar por nombre o celular..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+              }}
               className="w-full pl-10 pr-4 py-2 text-xs rounded-xl border border-stone-200 bg-stone-50/50"
             />
           </div>
@@ -208,7 +218,7 @@ export const ConsultantClientsView: React.FC = () => {
           <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
             <select
               value={skinFilter}
-              onChange={(e) => setSkinFilter(e.target.value)}
+              onChange={(e) => handleFilterChange(setSkinFilter, e.target.value)}
               className="p-2 text-xs rounded-xl border border-stone-200 bg-stone-50/50 text-stone-700 font-medium"
             >
               <option value="todas">Todos los Tipos de Piel</option>
@@ -221,7 +231,7 @@ export const ConsultantClientsView: React.FC = () => {
 
             <select
               value={catFilter}
-              onChange={(e) => setCatFilter(e.target.value)}
+              onChange={(e) => handleFilterChange(setCatFilter, e.target.value)}
               className="p-2 text-xs rounded-xl border border-stone-200 bg-stone-50/50 text-stone-700 font-medium"
             >
               <option value="todas">Todas las Preferencias</option>
@@ -235,85 +245,91 @@ export const ConsultantClientsView: React.FC = () => {
         </div>
 
         {/* Lista de Fichas de Clientas */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filteredClients.map((client) => {
-            const wpMsg = encodeURIComponent(
-              `Hola ${client.name}! Te escribo de Yanbal Prestige. Vi que tu categoría favorita es ${client.favoriteCategory} y tenemos novedades ideales para tu piel ${client.skinType.toLowerCase()}. ¿Te gustaría conocer las promociones de esta campaña?`
-            );
-            const cleanPhone = client.phone.replace(/[^0-9]/g, '');
+        {isTransitioning ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <ClientCardSkeleton count={2} />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {filteredClients.map((client) => {
+              const wpMsg = encodeURIComponent(
+                `Hola ${client.name}! Te escribo de Yanbal Prestige. Vi que tu categoría favorita es ${client.favoriteCategory} y tenemos novedades ideales para tu piel ${client.skinType.toLowerCase()}. ¿Te gustaría conocer las promociones de esta campaña?`
+              );
+              const cleanPhone = client.phone.replace(/[^0-9]/g, '');
 
-            return (
-              <div key={client.id} className="p-5 rounded-2xl bg-white border border-stone-200/80 shadow-xs space-y-3 hover:border-amber-300 transition-colors">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h4 className="font-editorial text-base font-bold text-stone-900">{client.name}</h4>
-                    <span className="text-xs text-stone-400 font-mono">{client.phone}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => handleOpenEdit(client)}
-                      className="p-1.5 text-stone-400 hover:text-amber-600 transition-colors cursor-pointer"
-                      title="Editar ficha"
-                    >
-                      <Edit3 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (confirm(`¿Eliminar la ficha de ${client.name}?`)) {
-                          deleteClient(client.id);
-                        }
-                      }}
-                      className="p-1.5 text-stone-300 hover:text-red-500 transition-colors cursor-pointer"
-                      title="Eliminar ficha"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 text-[11px]">
-                  <span className="px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 font-semibold border border-amber-200">
-                    Piel {client.skinType}
-                  </span>
-                  <span className="px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-700 font-semibold">
-                    {client.favoriteCategory}
-                  </span>
-                </div>
-
-                {client.notes && (
-                  <p className="text-xs text-stone-600 bg-stone-50/60 p-2.5 rounded-xl border border-stone-100">
-                    {client.notes}
-                  </p>
-                )}
-
-                <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-[11px] text-stone-400">
-                  <div className="flex items-center gap-1.5">
-                    <span>Último contacto: {client.lastContactDate}</span>
-                    <button
-                      onClick={() => handleMarkContactToday(client)}
-                      title="Marcar contacto hoy"
-                      className="text-stone-400 hover:text-stone-700 cursor-pointer"
-                    >
-                      <CalendarCheck className="w-3.5 h-3.5" />
-                    </button>
+              return (
+                <div key={client.id} className="p-5 rounded-2xl bg-white border border-stone-200/80 shadow-xs space-y-3 hover:border-amber-300 transition-colors">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h4 className="font-editorial text-base font-bold text-stone-900">{client.name}</h4>
+                      <span className="text-xs text-stone-400 font-mono">{client.phone}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleOpenEdit(client)}
+                        className="p-1.5 text-stone-400 hover:text-amber-600 transition-colors cursor-pointer"
+                        title="Editar ficha"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (confirm(`¿Eliminar la ficha de ${client.name}?`)) {
+                            deleteClient(client.id);
+                          }
+                        }}
+                        className="p-1.5 text-stone-300 hover:text-red-500 transition-colors cursor-pointer"
+                        title="Eliminar ficha"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
 
-                  <a
-                    href={`https://wa.me/${cleanPhone}?text=${wpMsg}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs cursor-pointer transition-colors"
-                  >
-                    <MessageCircle className="w-3.5 h-3.5" />
-                    <span>Asesorar por WhatsApp</span>
-                  </a>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+                  <div className="flex items-center gap-2 text-[11px]">
+                    <span className="px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 font-semibold border border-amber-200">
+                      Piel {client.skinType}
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-700 font-semibold">
+                      {client.favoriteCategory}
+                    </span>
+                  </div>
 
-        {filteredClients.length === 0 && (
+                  {client.notes && (
+                    <p className="text-xs text-stone-600 bg-stone-50/60 p-2.5 rounded-xl border border-stone-100">
+                      {client.notes}
+                    </p>
+                  )}
+
+                  <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-[11px] text-stone-400">
+                    <div className="flex items-center gap-1.5">
+                      <span>Último contacto: {client.lastContactDate}</span>
+                      <button
+                        onClick={() => handleMarkContactToday(client)}
+                        title="Marcar contacto hoy"
+                        className="text-stone-400 hover:text-stone-700 cursor-pointer"
+                      >
+                        <CalendarCheck className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    <a
+                      href={`https://wa.me/${cleanPhone}?text=${wpMsg}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs cursor-pointer transition-colors"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      <span>Asesorar por WhatsApp</span>
+                    </a>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {filteredClients.length === 0 && !isTransitioning && (
           <div className="p-12 text-center bg-white rounded-3xl border border-stone-200/80 text-stone-400 text-xs">
             No se encontraron clientas registradas con los filtros seleccionados.
           </div>
