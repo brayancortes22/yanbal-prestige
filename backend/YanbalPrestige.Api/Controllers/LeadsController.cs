@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using YanbalPrestige.Api.Data;
-using YanbalPrestige.Api.Models;
+using YanbalPrestige.Api.Entities;
 
 namespace YanbalPrestige.Api.Controllers;
 
@@ -37,7 +37,7 @@ public class LeadsController : ControllerBase
             return BadRequest(new { message = "Nombre y WhatsApp son requeridos." });
         }
 
-        // Sanitización básica contra caracteres de control
+        // Sanitización contra caracteres de control
         lead.FullName = lead.FullName.Trim();
         lead.Phone = lead.Phone.Trim();
         lead.City = lead.City.Trim();
