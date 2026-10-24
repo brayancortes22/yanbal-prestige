@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using YanbalPrestige.Api.Data;
-using YanbalPrestige.Api.Models;
+using YanbalPrestige.Api.DTOs;
+using YanbalPrestige.Api.Entities;
+using YanbalPrestige.Api.Services.Interfaces;
 
 namespace YanbalPrestige.Api.Controllers;
 
@@ -9,62 +9,49 @@ namespace YanbalPrestige.Api.Controllers;
 [Route("api/[controller]")]
 public class CatalogController : ControllerBase
 {
-    private readonly AppDbContext _context;
+    private readonly ICatalogService _catalogService;
 
-    public CatalogController(AppDbContext context)
+    public CatalogController(ICatalogService catalogService)
     {
-        _context = context;
+        _catalogService = catalogService;
     }
 
     [HttpGet("products")]
-    public async Task<IActionResult> GetProducts([FromQuery] string? category, [FromQuery] string? q)
+    public async Task<IActionResult> GetProducts([FromQuery] string? category, [FromQuery] string? q, [FromQuery] bool onlyActive = true)
     {
-        var query = _context.Products.AsNoTracking().Where(p => p.IsActive);
-
-        if (!string.IsNullOrWhiteSpace(category) && category != "all")
-        {
-            query = query.Where(p => p.Category == category);
-        }
-
-        if (!string.IsNullOrWhiteSpace(q))
-        {
-            var term = q.Trim().ToLower();
-            query = query.Where(p => p.Name.ToLower().Contains(term) || p.Description.ToLower().Contains(term) || p.Code.ToLower().Contains(term));
-        }
-
-        var products = await query.ToListAsync();
+        var filter = new ProductFilterDto { Category = category, Query = q, OnlyActive = onlyActive };
+        var products = await _catalogService.GetProductsAsync(filter);
         return Ok(products);
     }
 
     [HttpGet("products/{id}")]
     public async Task<IActionResult> GetProductById(string id)
     {
-        var product = await _context.Products.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id && p.IsActive);
-        if (product == null) return NotFound(new { message = "Producto no encontrado" });
+        var product = await _catalogService.GetProductByIdAsync(id);
+        if (product == null) return NotFound(new { message = "Producto no encontrado." });
         return Ok(product);
     }
 
-    // POST: api/catalog/products (Protegido por token de Directora / CMS)
     [HttpPost("products")]
-    public async Task<IActionResult> SaveProduct([FromBody] Product product, [FromHeader(Name = "Authorization")] string? authHeader)
+    public async Task<IActionResult> SaveProduct([FromBody] Product product)
     {
-        // Blindaje contra mutaciones no autorizadas
-        if (string.IsNullOrWhiteSpace(authHeader) || !authHeader.Contains("mock_jwt_token_yanbal_prestige_secure"))
-        {
-            return Unauthorized(new { message = "Acceso denegado. Se requiere token de Directora Administradora." });
-        }
+        var saved = await _catalogService.SaveProductAsync(product);
+        return Ok(saved);
+    }
 
-        var existing = await _context.Products.FindAsync(product.Id);
-        if (existing == null)
-        {
-            await _context.Products.AddAsync(product);
-        }
-        else
-        {
-            _context.Entry(existing).CurrentValues.SetValues(product);
-        }
+    [HttpPatch("products/{id}/toggle")]
+    public async Task<IActionResult> ToggleProduct(string id)
+    {
+        var success = await _catalogService.ToggleProductStatusAsync(id);
+        if (!success) return NotFound();
+        return Ok(new { success = true });
+    }
 
-        await _context.SaveChangesAsync();
-        return Ok(product);
+    [HttpDelete("products/{id}")]
+    public async Task<IActionResult> DeleteProduct(string id)
+    {
+        var success = await _catalogService.DeleteProductAsync(id);
+        if (!success) return NotFound();
+        return Ok(new { success = true });
     }
 }
