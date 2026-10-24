@@ -11,6 +11,7 @@ import { ProtectedRoute } from './components/auth/ProtectedRoute';
 // Vistas Públicas
 import { HomeView } from './views/HomeView';
 import { CatalogView } from './views/CatalogView';
+import { ProductDetailView } from './views/ProductDetailView';
 import { AboutView } from './views/AboutView';
 import { EventsView } from './views/EventsView';
 import { JoinView } from './views/JoinView';
@@ -47,6 +48,7 @@ export const AppLayout: React.FC = () => {
             path="/catalogo"
             element={<CatalogView searchQuery={searchQuery} onSearchChange={setSearchQuery} />}
           />
+          <Route path="/producto/:id" element={<ProductDetailView />} />
           <Route path="/quienes-somos" element={<AboutView />} />
           <Route path="/eventos" element={<EventsView />} />
           <Route path="/unete" element={<JoinView />} />
