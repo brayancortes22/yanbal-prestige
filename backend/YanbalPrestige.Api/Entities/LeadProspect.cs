@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
 
-namespace YanbalPrestige.Api.Models;
+namespace YanbalPrestige.Api.Entities;
 
 [Table("prospectos_unete")]
 public class LeadProspect
@@ -30,7 +30,6 @@ public class LeadProspect
     [Column("acepto_habeas_data")]
     public bool AcceptedHabeasData { get; set; }
 
-    // Honeypot: Captura tanto company_website como trapField
     [NotMapped]
     [JsonPropertyName("company_website")]
     public string? CompanyWebsite { get; set; }

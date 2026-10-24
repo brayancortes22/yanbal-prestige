@@ -1,53 +1,46 @@
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 
-namespace YanbalPrestige.Api.Models;
+namespace YanbalPrestige.Api.DTOs;
 
-[Table("productos")]
-public class Product
+public class ProductCreateUpdateDto
 {
-    [Key]
-    [Column("id")]
-    public string Id { get; set; } = Guid.NewGuid().ToString();
+    public string? Id { get; set; }
 
-    [Column("codigo")]
+    [Required]
     [MaxLength(50)]
     public string Code { get; set; } = string.Empty;
 
-    [Column("nombre")]
+    [Required]
     [MaxLength(200)]
     public string Name { get; set; } = string.Empty;
 
-    [Column("categoria")]
+    [Required]
     [MaxLength(50)]
     public string Category { get; set; } = string.Empty;
 
-    [Column("categoria_label")]
-    [MaxLength(100)]
     public string CategoryLabel { get; set; } = string.Empty;
 
-    [Column("precio", TypeName = "decimal(12,2)")]
+    [Range(0, 99999999)]
     public decimal Price { get; set; }
 
-    [Column("precio_original", TypeName = "decimal(12,2)")]
     public decimal? OriginalPrice { get; set; }
 
-    [Column("imagen_url")]
     public string Image { get; set; } = string.Empty;
 
-    [Column("descripcion")]
     public string Description { get; set; } = string.Empty;
 
-    [Column("badge")]
-    [MaxLength(50)]
     public string? Badge { get; set; }
 
-    [Column("modo_uso_json")]
     public string UsageStepsJson { get; set; } = "[]";
 
-    [Column("tip_consultora")]
     public string ConsultantTip { get; set; } = string.Empty;
 
-    [Column("activo")]
     public bool IsActive { get; set; } = true;
+}
+
+public class ProductFilterDto
+{
+    public string? Category { get; set; }
+    public string? Query { get; set; }
+    public bool OnlyActive { get; set; } = true;
 }

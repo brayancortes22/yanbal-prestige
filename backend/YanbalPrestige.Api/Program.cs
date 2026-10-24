@@ -2,22 +2,30 @@ using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using YanbalPrestige.Api.Data;
-using YanbalPrestige.Api.Models;
+using YanbalPrestige.Api.Services.Implementations;
+using YanbalPrestige.Api.Services.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Controladores y Swagger
+// 1. Controladores y Documentación OpenAPI / Swagger
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Caché para alta concurrencia (1,000+ usuarios/minuto)
+// 2. Registro de Inyección de Dependencias (Service Layer)
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<ICatalogService, CatalogService>();
+builder.Services.AddScoped<ICrmService, CrmService>();
+builder.Services.AddScoped<ICmsService, CmsService>();
+builder.Services.AddScoped<IMediaStorageService, MediaStorageService>();
+
+// 3. Caché de salida para alta concurrencia
 builder.Services.AddOutputCache(options =>
 {
-    options.AddBasePolicy(builder => builder.Expire(TimeSpan.FromSeconds(30)));
+    options.AddBasePolicy(b => b.Expire(TimeSpan.FromSeconds(30)));
 });
 
-// Blindaje contra Fuerza Bruta y Bots (Inspirado en autogestion-sena)
+// 4. Blindaje contra Fuerza Bruta y Bots (Regla 8)
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -36,7 +44,7 @@ builder.Services.AddRateLimiter(options =>
     });
 });
 
-// Configuración de Base de Datos MySQL con EF Core
+// 5. Configuración de Base de Datos MySQL con EF Core
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
     ?? "Server=localhost;Database=yanbal_prestige;User=root;Password=root;";
 
@@ -45,20 +53,27 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseMySQL(connectionString);
 });
 
-// CORS restrictivo con orígenes permitidos explícitos (Inspirado en autogestion-sena)
+// 6. Política de CORS para Producción y Desarrollo
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173")
+        policy.WithOrigins(
+                "http://localhost:5173", 
+                "http://localhost:3000", 
+                "http://127.0.0.1:5173",
+                "https://yanbal-prestige-web.vercel.app",
+                "https://yanbalprestige.com"
+              )
               .AllowAnyHeader()
-              .AllowAnyMethod();
+              .AllowAnyMethod()
+              .AllowCredentials();
     });
 });
 
 var app = builder.Build();
 
-// Middleware de Cabeceras de Seguridad Bancaria / OWASP (Inspirado en autogestion-sena)
+// 7. Middleware de Cabeceras de Seguridad Bancaria / OWASP
 app.Use(async (context, next) =>
 {
     context.Response.Headers.Append("X-Frame-Options", "SAMEORIGIN");
@@ -68,29 +83,33 @@ app.Use(async (context, next) =>
     await next();
 });
 
-if (app.Environment.IsDevelopment())
+// 8. Swagger en desarrollo y staging
+if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Yanbal Prestige API v1"));
 }
 
+// 9. Pipeline de Middlewares
+app.UseStaticFiles(); // Servir /uploads/ directamente desde el VPS
 app.UseCors("AllowFrontend");
 app.UseRateLimiter();
 app.UseOutputCache();
 app.UseAuthorization();
 app.MapControllers().RequireRateLimiting("ApiGlobalLimiter");
 
-// Auto-migración o creación básica si es necesario
+// 10. Inicialización y Semillero Automático de Datos
 using (var scope = app.Services.CreateScope())
 {
     try
     {
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         db.Database.EnsureCreated();
+        await DbInitializer.SeedAsync(db);
     }
     catch
     {
-        // Si el motor MySQL aún no tiene la base de datos creada, se usará el script SQL provisto
+        // En caso de que el motor MySQL no esté corriendo localmente, se continúa sin bloquear el arranque
     }
 }
 
