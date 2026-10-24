@@ -1,16 +1,23 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Eye, Ban } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import type { Product } from '../../types';
 
 interface ProductCardProps {
   product: Product;
-  onOpenDetails: (product: Product) => void;
+  onOpenDetails?: (product: Product) => void;
 }
 
-export const ProductCard: React.FC<ProductCardProps> = ({ product, onOpenDetails }) => {
+export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
+  const navigate = useNavigate();
   const { addToCart } = useCart();
   const isOutOfStock = product.active === false;
+
+  const handleNavigateToPDP = () => {
+    navigate(`/producto/${product.id}`);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
     <div className={`product-card card-luxury rounded-3xl overflow-hidden flex flex-col justify-between group ${
@@ -18,7 +25,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onOpenDetails
     }`}>
       
       {/* Contenedor Imagen */}
-      <div className="relative aspect-square bg-stone-50 overflow-hidden">
+      <div
+        onClick={handleNavigateToPDP}
+        className="relative aspect-square bg-stone-50 overflow-hidden cursor-pointer"
+      >
         <img
           src={product.image}
           alt={product.name}
@@ -35,11 +45,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onOpenDetails
           </span>
         ) : null}
 
-        {/* Botón Flotante Ver Ficha Rápida */}
+        {/* Botón Flotante Ver Ficha Completa PDP */}
         <button
-          onClick={() => onOpenDetails(product)}
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleNavigateToPDP();
+          }}
           className="absolute bottom-3 right-3 p-2.5 rounded-full bg-white/90 hover:bg-white text-stone-800 shadow-md backdrop-blur-sm opacity-90 sm:opacity-0 sm:group-hover:opacity-100 transition-all cursor-pointer hover:scale-110"
-          title="Ver Ficha & Consejos"
+          title="Ver Página de Producto & Zoom"
         >
           <Eye className="w-4 h-4 text-orange-600" />
         </button>
@@ -47,11 +61,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onOpenDetails
 
       {/* Info y Acciones */}
       <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-        <div>
+        <div onClick={handleNavigateToPDP} className="cursor-pointer">
           <span className="text-[10px] font-bold text-orange-600 uppercase tracking-widest block">
             {product.categoryLabel}
           </span>
-          <h3 className="font-editorial text-base sm:text-lg font-bold text-stone-900 mt-1 line-clamp-2">
+          <h3 className="font-editorial text-base sm:text-lg font-bold text-stone-900 mt-1 line-clamp-2 group-hover:text-orange-600 transition-colors">
             {product.name}
           </h3>
           <p className="text-xs text-stone-500 mt-1 line-clamp-2 leading-relaxed">

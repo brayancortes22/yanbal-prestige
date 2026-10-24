@@ -2,10 +2,8 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { CatalogFilters } from '../components/catalog/CatalogFilters';
 import { ProductCard } from '../components/catalog/ProductCard';
-import { ProductModal } from '../components/catalog/ProductModal';
 import { ProductCardSkeleton } from '../components/common/skeletons/ProductCardSkeleton';
 import { useConfig } from '../context/ConfigContext';
-import type { Product } from '../types';
 
 interface CatalogViewProps {
   searchQuery: string;
@@ -19,7 +17,6 @@ export const CatalogView: React.FC<CatalogViewProps> = ({ searchQuery, onSearchC
 
   const [selectedCategory, setSelectedCategory] = useState<string>(catParam);
   const [sortBy, setSortBy] = useState<string>('default');
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isTransitioning, setIsTransitioning] = useState<boolean>(false);
 
   useEffect(() => {
@@ -103,18 +100,12 @@ export const CatalogView: React.FC<CatalogViewProps> = ({ searchQuery, onSearchC
               <ProductCard
                 key={product.id}
                 product={product}
-                onOpenDetails={(p) => setSelectedProduct(p)}
               />
             ))}
           </div>
         )}
 
       </div>
-
-      <ProductModal
-        product={selectedProduct}
-        onClose={() => setSelectedProduct(null)}
-      />
     </div>
   );
 };
