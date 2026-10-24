@@ -1,8 +1,10 @@
 import React from 'react';
 import { Calendar, Clock, MapPin, ArrowRight } from 'lucide-react';
-import { eventsData } from '../data/catalogData';
+import { useConfig } from '../context/ConfigContext';
 
 export const EventsView: React.FC = () => {
+  const { events } = useConfig();
+
   return (
     <div className="py-16 bg-white min-h-[70vh] animate-fadeIn">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
@@ -21,7 +23,7 @@ export const EventsView: React.FC = () => {
 
         {/* Listado de Tarjetas de Eventos */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {eventsData.map((ev) => {
+          {events.map((ev) => {
             const wpReserveLink = `https://wa.me/573000000000?text=${encodeURIComponent(
               `Hola! Deseo reservar mi cupo para el evento: "${ev.title}" programado para el ${ev.date}.`
             )}`;
@@ -59,15 +61,15 @@ export const EventsView: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="pt-3 border-t border-stone-100 flex items-center justify-between gap-2">
-                    <span className="text-[11px] font-semibold text-emerald-700">
+                  <div className="pt-4 border-t border-stone-100 flex items-center justify-between">
+                    <span className="text-xs font-bold text-emerald-700">
                       {ev.spots}
                     </span>
                     <a
                       href={wpReserveLink}
                       target="_blank"
                       rel="noreferrer"
-                      className="px-4 py-2 rounded-full bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all"
+                      className="px-4 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
                     >
                       <span>Reservar Cupo</span>
                       <ArrowRight className="w-3.5 h-3.5" />
@@ -78,6 +80,12 @@ export const EventsView: React.FC = () => {
             );
           })}
         </div>
+
+        {events.length === 0 && (
+          <div className="p-12 text-center bg-stone-50 rounded-3xl border border-stone-200 text-stone-400 text-xs">
+            No hay talleres programados en este momento. Consulta con tu líder de zona.
+          </div>
+        )}
 
       </div>
     </div>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { ShoppingBag, Search, Menu, X, ShieldAlert } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
+import { useConfig } from '../../context/ConfigContext';
 
 interface HeaderProps {
   searchQuery: string;
@@ -10,6 +11,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ searchQuery, onSearchChange }) => {
   const { totalItems, openCart } = useCart();
+  const { announcements } = useConfig();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -29,7 +31,7 @@ export const Header: React.FC<HeaderProps> = ({ searchQuery, onSearchChange }) =
           <div className="flex items-center gap-2">
             <span className="inline-block w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
             <span className="text-[11px] sm:text-xs">
-              Portal Autorizado de <strong>Consultoras & Directoras Independientes Yanbal</strong>
+              {announcements.topBannerText}
             </span>
           </div>
           <div className="flex items-center gap-4">

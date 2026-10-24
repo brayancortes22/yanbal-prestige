@@ -2,25 +2,22 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { CatalogFilters } from '../components/catalog/CatalogFilters';
 import { ProductCard } from '../components/catalog/ProductCard';
-import { ProductModal } from '../components/catalog/ProductModal';
-import { productsData } from '../data/catalogData';
-import type { Product } from '../types';
+import { ProductCardSkeleton } from '../components/common/skeletons/ProductCardSkeleton';
+import { useConfig } from '../context/ConfigContext';
 
 interface CatalogViewProps {
   searchQuery: string;
   onSearchChange: (q: string) => void;
 }
 
-export const CatalogView: React.FC<CatalogViewProps> = ({
-  searchQuery,
-  onSearchChange
-}) => {
+export const CatalogView: React.FC<CatalogViewProps> = ({ searchQuery, onSearchChange }) => {
   const [searchParams] = useSearchParams();
   const catParam = searchParams.get('cat') || 'all';
+  const { products } = useConfig();
 
   const [selectedCategory, setSelectedCategory] = useState<string>(catParam);
   const [sortBy, setSortBy] = useState<string>('default');
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [isTransitioning, setIsTransitioning] = useState<boolean>(false);
 
   useEffect(() => {
     if (searchParams.get('cat')) {
@@ -28,11 +25,17 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
     }
   }, [searchParams]);
 
+  // Efecto sutil de carga de esqueleto al cambiar categoría o búsqueda
+  const handleSelectCategory = (cat: string) => {
+    setIsTransitioning(true);
+    setSelectedCategory(cat);
+    setTimeout(() => setIsTransitioning(false), 220);
+  };
+
   const filteredProducts = useMemo(() => {
-    return productsData
+    return products
       .filter((p) => {
-        const matchesCategory =
-          selectedCategory === 'all' || p.category === selectedCategory;
+        const matchesCategory = selectedCategory === 'all' || p.category === selectedCategory;
         const matchesSearch =
           p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
           p.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -44,7 +47,7 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
         if (sortBy === 'price-desc') return b.price - a.price;
         return 0;
       });
-  }, [selectedCategory, searchQuery, sortBy]);
+  }, [products, selectedCategory, searchQuery, sortBy]);
 
   return (
     <div className="py-12 bg-white min-h-[70vh] animate-fadeIn">
@@ -66,14 +69,18 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
 
         <CatalogFilters
           selectedCategory={selectedCategory}
-          onSelectCategory={setSelectedCategory}
+          onSelectCategory={handleSelectCategory}
           searchQuery={searchQuery}
           onSearchChange={onSearchChange}
           sortBy={sortBy}
           onSortChange={setSortBy}
         />
 
-        {filteredProducts.length === 0 ? (
+        {isTransitioning ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <ProductCardSkeleton count={6} />
+          </div>
+        ) : filteredProducts.length === 0 ? (
           <div className="text-center py-20 space-y-3">
             <p className="font-editorial text-xl text-stone-700">No encontramos productos con esos filtros</p>
             <p className="text-xs text-stone-500">Prueba ajustando el término de búsqueda o selecciona otra categoría.</p>
@@ -93,18 +100,12 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
               <ProductCard
                 key={product.id}
                 product={product}
-                onOpenDetails={(p) => setSelectedProduct(p)}
               />
             ))}
           </div>
         )}
 
       </div>
-
-      <ProductModal
-        product={selectedProduct}
-        onClose={() => setSelectedProduct(null)}
-      />
     </div>
   );
 };

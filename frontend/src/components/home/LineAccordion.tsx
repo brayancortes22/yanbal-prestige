@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, CheckCircle2 } from 'lucide-react';
-import { linesAccordionData } from '../../data/catalogData';
+import { useConfig } from '../../context/ConfigContext';
 
 export const LineAccordion: React.FC = () => {
-  const [activeLineId, setActiveLineId] = useState<string>(linesAccordionData[0].id);
+  const { linesAccordion } = useConfig();
+  const [activeLineId, setActiveLineId] = useState<string>(linesAccordion[0]?.id || 'line-solar');
   const navigate = useNavigate();
 
   const handleExplore = (category: string) => {
@@ -28,7 +29,7 @@ export const LineAccordion: React.FC = () => {
         </div>
 
         <div className="flex flex-col lg:flex-row gap-4 h-auto lg:h-[480px]">
-          {linesAccordionData.map((line) => {
+          {linesAccordion.map((line) => {
             const isActive = line.id === activeLineId;
             return (
               <div

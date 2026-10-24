@@ -37,20 +37,36 @@ yanbal-prestige/
 ├── frontend/                     # Aplicación SPA en React 19 + TypeScript + Vite
 │   ├── src/
 │   │   ├── components/
+│   │   │   ├── admin/            # AdminNav.tsx (Navegación centralizada de páginas de administración)
+│   │   │   ├── consultant/       # ConsultantNav.tsx (Navegación del portal de consultora)
 │   │   │   ├── auth/             # ProtectedRoute.tsx (Guarda de seguridad en rutas privadas)
-│   │   │   ├── common/           # Header con anuncio MAYA y Footer con iconos SVGL
+│   │   │   ├── common/           # Header con anuncio dinámico MAYA y Footer con iconos SVGL
 │   │   │   ├── cart/             # CartDrawer.tsx (Slide-over con checkout a WhatsApp)
 │   │   │   ├── home/             # HeroSlider, LineAccordion (Ultraprotección), Videos
 │   │   │   ├── catalog/          # CatalogFilters, ProductCard, ProductModal
 │   │   │   └── join/             # JoinForm.tsx (Honeypot + Ley 1581 Habeas Data)
-│   │   ├── views/                # Vistas SPA independientes
+│   │   ├── views/                # Vistas SPA independientes (Anti-Modales Centralizadas)
 │   │   │   ├── HomeView.tsx      # Vista Inicio
 │   │   │   ├── CatalogView.tsx   # Vista Catálogo dedicada con filtros y paginación
 │   │   │   ├── AboutView.tsx     # Vista Quiénes Somos (Bento Grid)
 │   │   │   ├── EventsView.tsx    # Vista Agenda y Talleres de Automaquillaje
 │   │   │   ├── JoinView.tsx      # Vista Sé Consultora
-│   │   │   └── admin/            # AdminLoginView.tsx y AdminDashboardView.tsx (CMS)
-│   │   ├── context/              # CartContext.tsx y AuthContext.tsx
+│   │   │   ├── NotFoundView.tsx  # Vista de Error 404 Refero AAA
+│   │   │   ├── admin/            # Páginas Centralizadas de Administración
+│   │   │   │   ├── AdminLoginView.tsx         # Login por correo con redirección por rol
+│   │   │   │   ├── AdminDashboardView.tsx     # Métricas y KPIs de ventas de campaña
+│   │   │   │   ├── AdminCatalogView.tsx       # Catálogo con Códigos SKU y Paginación
+│   │   │   │   ├── AdminAnnouncementsView.tsx # Gestión de anuncios y banners de campaña
+│   │   │   │   ├── AdminUsersView.tsx         # Equipo, roles y desbloqueo de PINs OTP
+│   │   │   │   └── AdminLeadsView.tsx         # Bandeja de aspirantes de Únete
+│   │   │   ├── consultant/       # Páginas Centralizadas de Consultora
+│   │   │   │   ├── ConsultantPortalView.tsx   # Resumen de metas y enlace de asesora
+│   │   │   │   ├── ConsultantClientsView.tsx  # CRM de clientas (tipo de piel y WhatsApp)
+│   │   │   │   └── ConsultantCatalogView.tsx  # Buscador rápido de códigos SKU
+│   │   │   └── auth/
+│   │   │       └── ResetPasswordView.tsx      # Cambio de clave por PIN OTP (Cero SMTP)
+│   │   ├── hooks/                # useCacheSync.ts (Caché SWR 0ms) y useIdleTimer.ts (15m logout)
+│   │   ├── context/              # CartContext.tsx, AuthContext.tsx y ConfigContext.tsx
 │   │   ├── data/                 # catalogData.ts (Mock tipado con datos de Yanbal)
 │   │   ├── types/                # index.ts (Contratos TypeScript estrictos)
 │   │   └── App.tsx               # Enrutador principal BrowserRouter con rutas protegidas
