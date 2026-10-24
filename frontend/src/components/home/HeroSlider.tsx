@@ -1,25 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
+import { useConfig } from '../../context/ConfigContext';
 
 export const HeroSlider: React.FC = () => {
   const navigate = useNavigate();
-  const slides = [
-    {
-      title: 'NUEVO GENACTIVE',
-      subtitle: 'SÉRUM FILLER ANTIARRUGAS',
-      desc: 'Rellena líneas de expresión y reactiva la producción dérmica con Ácido Hialurónico biotecnológico.',
-      badge: 'Lanzamiento Exclusivo',
-      image: 'https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?auto=format&fit=crop&w=1200&q=80',
-    },
-    {
-      title: 'TOTAL BLOCK SPF 100',
-      subtitle: 'ULTRAPROTECCIÓN TOTAL',
-      desc: 'Protección clínica multipantalla contra rayos UVA, UVB, Luz Azul e Infrarrojo.',
-      badge: 'Línea N°1 en Latinoamérica',
-      image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=1200&q=80',
-    }
-  ];
+  const { heroSlides } = useConfig();
+  const activeSlides = heroSlides.filter((s) => s.active);
+  const slides = activeSlides.length > 0 ? activeSlides : heroSlides;
 
   const [current, setCurrent] = useState(0);
 
@@ -27,11 +15,13 @@ export const HeroSlider: React.FC = () => {
   const prevSlide = () => setCurrent((prev) => (prev - 1 + slides.length) % slides.length);
 
   useEffect(() => {
+    if (slides.length <= 1) return;
     const timer = setInterval(nextSlide, 7000);
     return () => clearInterval(timer);
-  }, []);
+  }, [slides.length]);
 
-  const slide = slides[current];
+  const slide = slides[current] || slides[0];
+  if (!slide) return null;
 
   return (
     <section className="relative overflow-hidden bg-stone-900 text-white">
@@ -79,30 +69,34 @@ export const HeroSlider: React.FC = () => {
           </div>
         </div>
 
-        <button
-          onClick={prevSlide}
-          className="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-stone-900/60 hover:bg-stone-900 text-white flex items-center justify-center backdrop-blur-sm transition-all cursor-pointer"
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </button>
-        <button
-          onClick={nextSlide}
-          className="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-stone-900/60 hover:bg-stone-900 text-white flex items-center justify-center backdrop-blur-sm transition-all cursor-pointer"
-        >
-          <ChevronRight className="w-5 h-5" />
-        </button>
-
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex gap-2">
-          {slides.map((_, i) => (
+        {slides.length > 1 && (
+          <>
             <button
-              key={i}
-              onClick={() => setCurrent(i)}
-              className={`w-2.5 h-2.5 rounded-full transition-all cursor-pointer ${
-                i === current ? 'w-8 bg-orange-500' : 'bg-white/40'
-              }`}
-            />
-          ))}
-        </div>
+              onClick={prevSlide}
+              className="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-stone-900/60 hover:bg-stone-900 text-white flex items-center justify-center backdrop-blur-sm transition-all cursor-pointer"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <button
+              onClick={nextSlide}
+              className="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-stone-900/60 hover:bg-stone-900 text-white flex items-center justify-center backdrop-blur-sm transition-all cursor-pointer"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex gap-2">
+              {slides.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setCurrent(i)}
+                  className={`w-2.5 h-2.5 rounded-full transition-all cursor-pointer ${
+                    i === current ? 'bg-orange-600 w-6' : 'bg-white/40 hover:bg-white/70'
+                  }`}
+                />
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </section>
   );

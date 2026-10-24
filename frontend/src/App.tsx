@@ -23,6 +23,7 @@ import { ResetPasswordView } from './views/auth/ResetPasswordView';
 // Páginas Centralizadas de Administración
 import { AdminDashboardView } from './views/admin/AdminDashboardView';
 import { AdminCatalogView } from './views/admin/AdminCatalogView';
+import { AdminContentCMSView } from './views/admin/AdminContentCMSView';
 import { AdminAnnouncementsView } from './views/admin/AdminAnnouncementsView';
 import { AdminUsersView } from './views/admin/AdminUsersView';
 import { AdminLeadsView } from './views/admin/AdminLeadsView';
@@ -55,6 +56,7 @@ export const AppLayout: React.FC = () => {
           {/* Rutas Administrativas Centralizadas */}
           <Route path="/admin" element={<ProtectedRoute><AdminDashboardView /></ProtectedRoute>} />
           <Route path="/admin/catalogo" element={<ProtectedRoute><AdminCatalogView /></ProtectedRoute>} />
+          <Route path="/admin/contenido" element={<ProtectedRoute><AdminContentCMSView /></ProtectedRoute>} />
           <Route path="/admin/anuncios" element={<ProtectedRoute><AdminAnnouncementsView /></ProtectedRoute>} />
           <Route path="/admin/usuarios" element={<ProtectedRoute><AdminUsersView /></ProtectedRoute>} />
           <Route path="/admin/prospectos" element={<ProtectedRoute><AdminLeadsView /></ProtectedRoute>} />

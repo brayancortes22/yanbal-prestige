@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { BarChart3, Package, Megaphone, Users, UserCheck, LogOut, ShieldCheck } from 'lucide-react';
+import { BarChart3, Package, Megaphone, Users, UserCheck, LogOut, ShieldCheck, FileText } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export const AdminNav: React.FC = () => {
@@ -9,6 +9,7 @@ export const AdminNav: React.FC = () => {
   const navItems = [
     { to: '/admin', label: 'Métricas & KPIs', icon: BarChart3, end: true },
     { to: '/admin/catalogo', label: 'Catálogo & SKU', icon: Package },
+    { to: '/admin/contenido', label: 'Contenido CMS', icon: FileText },
     { to: '/admin/anuncios', label: 'Anuncios & Campaña', icon: Megaphone },
     { to: '/admin/usuarios', label: 'Equipo & Roles', icon: Users },
     { to: '/admin/prospectos', label: 'Prospectos Únete', icon: UserCheck },
@@ -47,7 +48,7 @@ export const AdminNav: React.FC = () => {
           </button>
         </div>
 
-        {/* Pestañas de navegación centralizadas (Estilo Linear / Segmented) */}
+        {/* Pestañas de navegación centralizadas */}
         <nav className="flex items-center gap-1 overflow-x-auto py-2.5 no-scrollbar">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -59,12 +60,12 @@ export const AdminNav: React.FC = () => {
                 className={({ isActive }) =>
                   `px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 whitespace-nowrap transition-all ${
                     isActive
-                      ? 'bg-stone-900 text-white shadow-sm'
-                      : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
+                      ? 'bg-orange-600 text-white shadow-xs'
+                      : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
                   }`
                 }
               >
-                <Icon className="w-4 h-4 shrink-0" />
+                <Icon className="w-4 h-4" />
                 <span>{item.label}</span>
               </NavLink>
             );

@@ -18,7 +18,7 @@ export interface ConsultantClient {
   name: string;
   phone: string;
   skinType: 'Normal' | 'Grasa' | 'Mixta' | 'Seca' | 'Sensible';
-  favoriteCategory: 'Tratamiento Facial' | 'Perfumería' | 'Protección Solar' | 'Maquillaje';
+  favoriteCategory: 'Tratamiento Facial' | 'Perfumería' | 'Protección Solar' | 'Maquillaje' | 'Joyería Fina';
   notes: string;
   lastContactDate: string;
 }
@@ -30,6 +30,49 @@ export interface AnnouncementConfig {
   campaignDiscountText: string;
   whatsAppWelcomeMsg: string;
   updatedAt: string;
+}
+
+export interface AboutContentConfig {
+  historyTag: string;
+  historyTitle: string;
+  historyDesc: string;
+  missionTag: string;
+  missionTitle: string;
+  missionDesc: string;
+  consultantsCountText: string;
+  adviceTag: string;
+  adviceTitle: string;
+  adviceDesc: string;
+  updatedAt: string;
+}
+
+export interface HeroSlide {
+  id: string;
+  title: string;
+  subtitle: string;
+  desc: string;
+  badge: string;
+  image: string;
+  active: boolean;
+}
+
+export interface DigitalCatalogConfig {
+  badge: string;
+  title: string;
+  titleHighlight: string;
+  description: string;
+  coverImage: string;
+  specialEditionText: string;
+  discountText: string;
+}
+
+export interface VideoTipItem {
+  id: string;
+  title: string;
+  duration: string;
+  image: string;
+  description: string;
+  active: boolean;
 }
 
 export interface PasswordResetRequest {
@@ -57,6 +100,7 @@ export interface Product {
   badge?: string;
   usageSteps: string[];
   consultantTip: string;
+  active: boolean; // Estado: true (En Catálogo) o false (Agotado/Pausado)
 }
 
 export interface CartItem {
