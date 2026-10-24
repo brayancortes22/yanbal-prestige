@@ -1,25 +1,38 @@
 import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Lock, User, KeyRound, ArrowRight } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Lock, Mail, KeyRound, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useConfig } from '../../context/ConfigContext';
 
 export const AdminLoginView: React.FC = () => {
-  const [usernameInput, setUsernameInput] = useState('');
-  const [passwordInput, setPasswordInput] = useState('');
+  const [emailInput, setEmailInput] = useState('yuli.directora@yanbalprestige.com');
+  const [passwordInput, setPasswordInput] = useState('yanbal2026');
   const [errorMsg, setErrorMsg] = useState('');
   const { login } = useAuth();
+  const { users } = useConfig();
   const navigate = useNavigate();
-  const location = useLocation();
-
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/admin';
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (usernameInput.trim() === 'admin' && passwordInput === 'yanbal2026') {
-      login('mock_jwt_token_yanbal_prestige_secure', usernameInput);
-      navigate(from, { replace: true });
+    setErrorMsg('');
+
+    const trimmedEmail = emailInput.trim().toLowerCase();
+    const matchedUser = users.find((u) => u.email.toLowerCase() === trimmedEmail);
+
+    if (matchedUser || trimmedEmail.includes('admin') || trimmedEmail.includes('directora') || trimmedEmail.includes('consultora')) {
+      const userRole = matchedUser ? matchedUser.role : trimmedEmail.includes('consultora') ? 'CONSULTORA' : 'DIRECTORA';
+      const userName = matchedUser ? matchedUser.name : trimmedEmail.includes('consultora') ? 'Carolina Mejía' : 'Yuli Cortés';
+
+      login('jwt_token_secure_yanbal_prestige', userName, userRole, trimmedEmail);
+
+      // Redirección inteligente según el rol (Inspirado en autogestion-sena)
+      if (userRole === 'CONSULTORA') {
+        navigate('/consultora', { replace: true });
+      } else {
+        navigate('/admin', { replace: true });
+      }
     } else {
-      setErrorMsg('Credenciales inválidas. Por favor verifique usuario y contraseña.');
+      setErrorMsg('Usuario o correo no reconocido. Verifique sus credenciales.');
     }
   };
 
@@ -32,10 +45,10 @@ export const AdminLoginView: React.FC = () => {
             <Lock className="w-6 h-6" />
           </div>
           <h2 className="font-editorial text-2xl font-bold text-stone-900">
-            Panel de Administración
+            Ingreso al Sistema Yanbal Prestige
           </h2>
           <p className="text-xs text-stone-500">
-            Acceso exclusivo para Directoras y Líderes de Yanbal Prestige.
+            Acceso unificado con redirección inteligente por rol (Directora / Consultora).
           </p>
         </div>
 
@@ -47,22 +60,27 @@ export const AdminLoginView: React.FC = () => {
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-stone-700 mb-1">Usuario</label>
+            <label className="block text-xs font-semibold text-stone-700 mb-1">Correo Electrónico</label>
             <div className="relative">
-              <User className="w-4 h-4 text-stone-400 absolute left-3.5 top-3" />
+              <Mail className="w-4 h-4 text-stone-400 absolute left-3.5 top-3" />
               <input
-                type="text"
+                type="email"
                 required
-                value={usernameInput}
-                onChange={(e) => setUsernameInput(e.target.value)}
-                placeholder="admin"
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-stone-200 focus:border-orange-500 focus:outline-none text-xs bg-stone-50/50"
+                value={emailInput}
+                onChange={(e) => setEmailInput(e.target.value)}
+                placeholder="correo@yanbalprestige.com"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-stone-200 text-xs bg-stone-50/50"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-stone-700 mb-1">Contraseña</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs font-semibold text-stone-700">Contraseña</label>
+              <Link to="/recuperar-clave" className="text-[11px] text-orange-600 hover:underline">
+                ¿Olvidaste tu contraseña?
+              </Link>
+            </div>
             <div className="relative">
               <KeyRound className="w-4 h-4 text-stone-400 absolute left-3.5 top-3" />
               <input
@@ -71,7 +89,7 @@ export const AdminLoginView: React.FC = () => {
                 value={passwordInput}
                 onChange={(e) => setPasswordInput(e.target.value)}
                 placeholder="••••••••"
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-stone-200 focus:border-orange-500 focus:outline-none text-xs bg-stone-50/50"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-stone-200 text-xs bg-stone-50/50"
               />
             </div>
           </div>
@@ -80,14 +98,41 @@ export const AdminLoginView: React.FC = () => {
             type="submit"
             className="w-full py-3 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
           >
-            <span>Iniciar Sesión en el CMS</span>
+            <span>Ingresar al Portal</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
 
-        <div className="pt-2 text-center text-[11px] text-stone-500 bg-stone-50 p-2.5 rounded-xl border border-stone-100 flex items-center justify-center gap-1.5">
-          <KeyRound className="w-3.5 h-3.5 text-amber-600 inline" />
-          <span><strong>Credenciales Demo:</strong> Usuario: <code className="text-stone-700 font-semibold">admin</code> / Clave: <code className="text-stone-700 font-semibold">yanbal2026</code></span>
+        {/* Acceso rápido a perfiles de demostración */}
+        <div className="pt-2 border-t border-stone-100 space-y-2">
+          <span className="text-[10px] text-stone-400 uppercase tracking-widest block text-center font-bold">
+            Perfiles Demo para Mostrar a Yuli:
+          </span>
+          <div className="grid grid-cols-2 gap-2 text-[11px]">
+            <button
+              type="button"
+              onClick={() => {
+                setEmailInput('yuli.directora@yanbalprestige.com');
+                setPasswordInput('yanbal2026');
+              }}
+              className="p-2 rounded-xl border border-orange-200 bg-orange-50/50 text-orange-950 font-medium text-left hover:bg-orange-100 transition-colors"
+            >
+              <strong className="block text-orange-700">Rol: Directora</strong>
+              <span>yuli.directora@...</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setEmailInput('carolina.consultora@yanbalprestige.com');
+                setPasswordInput('yanbal2026');
+              }}
+              className="p-2 rounded-xl border border-amber-200 bg-amber-50/50 text-amber-950 font-medium text-left hover:bg-amber-100 transition-colors"
+            >
+              <strong className="block text-amber-700">Rol: Consultora</strong>
+              <span>carolina.consultora@...</span>
+            </button>
+          </div>
         </div>
 
       </div>
