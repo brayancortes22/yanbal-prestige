@@ -70,12 +70,19 @@ yanbal-prestige/
 │   │   ├── data/                 # catalogData.ts (Mock tipado con datos de Yanbal)
 │   │   ├── types/                # index.ts (Contratos TypeScript estrictos)
 │   │   └── App.tsx               # Enrutador principal BrowserRouter con rutas protegidas
-├── backend/                      # API REST en ASP.NET Core 10 Web API
+├── backend/                      # API REST en ASP.NET Core 10 Web API (Clean Architecture)
 │   └── YanbalPrestige.Api/
-│       ├── Controllers/          # CatalogController, EventsController, LeadsController
-│       ├── Models/               # Product, EventItem, LeadProspect
-│       ├── Data/                 # AppDbContext con índices optimizados
-│       └── Program.cs            # OutputCache, CORS, Kestrel y MySQL EF Core
+│       ├── Controllers/          # Auth, Catalog, Crm, Cms, Leads, Media (<80 líneas c/u)
+│       ├── Services/             # Service Layer desacoplado (Interfaces e Implementaciones)
+│       │   ├── Background/       # DatabaseBackupWorker.cs (Backups diarios & purga 30 días)
+│       │   ├── Implementations/  # Catalog, Cms, MediaStorage (WebP 82%), Turnstile
+│       │   └── Interfaces/       # IAuthService, ICatalogService, ICmsService, etc.
+│       ├── Entities/             # Product, User, ConsultantClient, HeroSlide, VideoTip, etc.
+│       ├── DTOs/                 # AuthDtos, CatalogDtos, CrmDtos, CmsDtos, MediaDtos
+│       ├── Common/               # Enums & Security (TurnstileSettings)
+│       ├── Data/                 # AppDbContext (Fluent API B-Trees) & DbInitializer (Seed Yuli)
+│       ├── Directory.Build.targets # Bypass local de SixLabors para Release/CI
+│       └── Program.cs            # OpenAPI 3.1.1 nativo, OutputCache, CORS, StaticFiles, OWASP
 ├── database/
 │   └── yanbal_prestige.sql       # Script SQL DDL y semillas iniciales para MySQL 8.0+
 └── figma/
@@ -130,7 +137,13 @@ En lugar de forzar al usuario a scrollear una página kilométrica, se implement
 * **Tipado Fuerte y Seguridad de Tipos:** Arquitectura en capas desacopladas con Entity Framework Core.
 * **Separación de Responsabilidades:** Controladores delgados (*Skinny Controllers*) con métodos de menos de 30 líneas dedicados a un único caso de uso.
 
-### 2. Estrategia para Soportar 1.000+ Usuarios/Minuto (Escalabilidad Departamental)
+### 2. Capa de Servicios y Procesamiento Asíncrono
+* **Conversión WebP Automática (SixLabors.ImageSharp):** Al subir cualquier imagen (JPG, PNG), el servicio MediaStorageService la redimensiona a un ancho máximo de 1920px y la codifica a WebP al 82% de calidad, reduciendo el peso en más de un 75% sin pérdida perceptual.
+* **Streaming Progresivo de Videos:** Control de carga con límite de 150 MB y persistencia optimizada para reproducción por fragmentos (*Byte-Range Requests*).
+* **Autolimpieza en Cascada (Garbage Collection Físico):** Al actualizar o eliminar productos, sliders o videos, el backend purga automáticamente del disco físico los archivos huérfanos anteriores (File.Delete), evitando el consumo desmedido del disco NVMe del VPS.
+* **Copias de Seguridad Automáticas en Background (DatabaseBackupWorker):** Servicio continuo (BackgroundService) que genera respaldos SQL automáticos cada 24 horas y depura respaldos con más de 30 días de antigüedad.
+
+### 3. Estrategia para Soportar 1.000+ Usuarios/Minuto (Escalabilidad Departamental)
 Para garantizar que el portal soporte picos de tráfico concurrentes desde múltiples municipios de Colombia sin colapsar el servidor:
 1. **Caché en Memoria de Respuesta (`OutputCache`):**
    * Configurado en `Program.cs` con una política de 30 segundos sobre `/api/catalog/products`.
