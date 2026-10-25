@@ -9,10 +9,12 @@ namespace YanbalPrestige.Api.Services.Implementations;
 public class CatalogService : ICatalogService
 {
     private readonly AppDbContext _context;
+    private readonly IMediaStorageService _mediaService;
 
-    public CatalogService(AppDbContext context)
+    public CatalogService(AppDbContext context, IMediaStorageService mediaService)
     {
         _context = context;
+        _mediaService = mediaService;
     }
 
     public async Task<List<Product>> GetProductsAsync(ProductFilterDto filter)
@@ -60,6 +62,14 @@ public class CatalogService : ICatalogService
         }
         else
         {
+            // Autolimpieza: Purgar imagen física anterior si fue reemplazada
+            if (!string.IsNullOrWhiteSpace(existing.Image) && 
+                existing.Image != product.Image && 
+                existing.Image.Contains("/uploads/"))
+            {
+                _mediaService.DeleteFile(existing.Image);
+            }
+
             _context.Entry(existing).CurrentValues.SetValues(product);
         }
 
@@ -80,6 +90,13 @@ public class CatalogService : ICatalogService
     {
         var product = await _context.Products.FindAsync(id);
         if (product == null) return false;
+
+        // Autolimpieza: Purgar imagen física del disco al eliminar el producto
+        if (!string.IsNullOrWhiteSpace(product.Image) && product.Image.Contains("/uploads/"))
+        {
+            _mediaService.DeleteFile(product.Image);
+        }
+
         _context.Products.Remove(product);
         await _context.SaveChangesAsync();
         return true;

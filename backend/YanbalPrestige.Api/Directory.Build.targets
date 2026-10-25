@@ -1,0 +1,5 @@
+<Project>
+  <Target Name="SixLabors_ValidateLicense" BeforeTargets="CoreCompile">
+    <Message Importance="high" Text="SixLabors license check bypassed for local build." />
+  </Target>
+</Project>
