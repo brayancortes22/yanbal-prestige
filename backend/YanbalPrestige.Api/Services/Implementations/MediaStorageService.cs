@@ -1,3 +1,6 @@
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Webp;
+using SixLabors.ImageSharp.Processing;
 using YanbalPrestige.Api.Services.Interfaces;
 
 namespace YanbalPrestige.Api.Services.Implementations;
@@ -6,6 +9,8 @@ public class MediaStorageService : IMediaStorageService
 {
     private readonly IWebHostEnvironment _env;
     private readonly ILogger<MediaStorageService> _logger;
+    private static readonly HashSet<string> ImageExtensions = [".jpg", ".jpeg", ".png", ".bmp", ".webp"];
+    private static readonly HashSet<string> VideoExtensions = [".mp4", ".mov", ".webm"];
 
     public MediaStorageService(IWebHostEnvironment env, ILogger<MediaStorageService> logger)
     {
@@ -16,30 +21,67 @@ public class MediaStorageService : IMediaStorageService
     public async Task<(string url, string fileName, long size)> SaveFileAsync(IFormFile file, string subFolder)
     {
         if (file == null || file.Length == 0)
-        {
             throw new ArgumentException("El archivo es inválido o está vacío.");
-        }
 
-        // Sanitización contra Directory Traversal
         var safeSubFolder = Path.GetFileName(subFolder);
-        var uploadsRoot = Path.Combine(_env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), "uploads", safeSubFolder);
+        var webRoot = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+        var uploadsRoot = Path.Combine(webRoot, "uploads", safeSubFolder);
         
         if (!Directory.Exists(uploadsRoot))
-        {
             Directory.CreateDirectory(uploadsRoot);
+
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+
+        // 1. Compresión y Conversión Automática de Imágenes a WebP
+        if (ImageExtensions.Contains(ext))
+        {
+            var uniqueName = $"{Guid.NewGuid():N}_{DateTime.UtcNow.Ticks}.webp";
+            var physicalPath = Path.Combine(uploadsRoot, uniqueName);
+
+            await using var inputStream = file.OpenReadStream();
+            using var image = await Image.LoadAsync(inputStream);
+
+            if (image.Width > 1920)
+            {
+                image.Mutate(x => x.Resize(new ResizeOptions
+                {
+                    Size = new Size(1920, 0),
+                    Mode = ResizeMode.Max
+                }));
+            }
+
+            await image.SaveAsWebpAsync(physicalPath, new WebpEncoder { Quality = 82 });
+            var fileInfo = new FileInfo(physicalPath);
+
+            var publicUrl = $"/uploads/{safeSubFolder}/{uniqueName}";
+            _logger.LogInformation("Imagen optimizada a WebP: {Url} ({Size} KB)", publicUrl, fileInfo.Length / 1024);
+            return (publicUrl, uniqueName, fileInfo.Length);
         }
 
-        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
-        var uniqueFileName = $"{Guid.NewGuid():N}_{DateTime.UtcNow.Ticks}{extension}";
-        var physicalPath = Path.Combine(uploadsRoot, uniqueFileName);
+        // 2. Control y Guardado de Videos (Streaming Progresivo)
+        if (VideoExtensions.Contains(ext))
+        {
+            if (file.Length > 150 * 1024 * 1024)
+                throw new ArgumentException("El video excede el límite máximo permitido de 150 MB.");
 
-        await using var stream = new FileStream(physicalPath, FileMode.Create);
-        await file.CopyToAsync(stream);
+            var uniqueName = $"{Guid.NewGuid():N}_{DateTime.UtcNow.Ticks}{ext}";
+            var physicalPath = Path.Combine(uploadsRoot, uniqueName);
 
-        var publicUrl = $"/uploads/{safeSubFolder}/{uniqueFileName}";
-        _logger.LogInformation("Archivo guardado exitosamente en: {Path}", physicalPath);
+            await using var stream = new FileStream(physicalPath, FileMode.Create);
+            await file.CopyToAsync(stream);
 
-        return (publicUrl, uniqueFileName, file.Length);
+            var publicUrl = $"/uploads/{safeSubFolder}/{uniqueName}";
+            _logger.LogInformation("Video guardado para streaming progresivo: {Url}", publicUrl);
+            return (publicUrl, uniqueName, file.Length);
+        }
+
+        // 3. Documentos y otros archivos (ej. Catálogo PDF)
+        var defaultName = $"{Guid.NewGuid():N}_{DateTime.UtcNow.Ticks}{ext}";
+        var defaultPath = Path.Combine(uploadsRoot, defaultName);
+        await using var defStream = new FileStream(defaultPath, FileMode.Create);
+        await file.CopyToAsync(defStream);
+
+        return ($"/uploads/{safeSubFolder}/{defaultName}", defaultName, file.Length);
     }
 
     public bool DeleteFile(string relativeOrAbsoluteUrl)
@@ -48,7 +90,6 @@ public class MediaStorageService : IMediaStorageService
 
         try
         {
-            // Limpieza para extraer ruta relativa desde /uploads/...
             var cleanPath = relativeOrAbsoluteUrl.TrimStart('/');
             if (cleanPath.StartsWith("http", StringComparison.OrdinalIgnoreCase))
             {
@@ -56,13 +97,17 @@ public class MediaStorageService : IMediaStorageService
                 cleanPath = uri.AbsolutePath.TrimStart('/');
             }
 
+            // Solo purgar si está dentro del directorio /uploads/
+            if (!cleanPath.StartsWith("uploads", StringComparison.OrdinalIgnoreCase))
+                return false;
+
             var webRoot = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
             var physicalPath = Path.Combine(webRoot, cleanPath.Replace('/', Path.DirectorySeparatorChar));
 
             if (File.Exists(physicalPath))
             {
                 File.Delete(physicalPath);
-                _logger.LogInformation("Garbage Collector: Archivo físico purgado: {Path}", physicalPath);
+                _logger.LogInformation("Garbage Collector: Archivo purgado físicamente: {Path}", physicalPath);
                 return true;
             }
         }
