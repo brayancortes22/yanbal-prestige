@@ -8,10 +8,12 @@ namespace YanbalPrestige.Api.Services.Implementations;
 public class CmsService : ICmsService
 {
     private readonly AppDbContext _context;
+    private readonly IMediaStorageService _mediaService;
 
-    public CmsService(AppDbContext context)
+    public CmsService(AppDbContext context, IMediaStorageService mediaService)
     {
         _context = context;
+        _mediaService = mediaService;
     }
 
     public async Task<List<HeroSlide>> GetHeroSlidesAsync()
@@ -25,9 +27,16 @@ public class CmsService : ICmsService
     {
         var existing = await _context.HeroSlides.FindAsync(slide.Id);
         if (existing == null)
+        {
             await _context.HeroSlides.AddAsync(slide);
+        }
         else
+        {
+            if (!string.IsNullOrWhiteSpace(existing.ImageUrl) && existing.ImageUrl != slide.ImageUrl)
+                _mediaService.DeleteFile(existing.ImageUrl);
+
             _context.Entry(existing).CurrentValues.SetValues(slide);
+        }
 
         await _context.SaveChangesAsync();
         return slide;
@@ -37,6 +46,8 @@ public class CmsService : ICmsService
     {
         var slide = await _context.HeroSlides.FindAsync(id);
         if (slide == null) return false;
+
+        _mediaService.DeleteFile(slide.ImageUrl);
         _context.HeroSlides.Remove(slide);
         await _context.SaveChangesAsync();
         return true;
@@ -52,9 +63,16 @@ public class CmsService : ICmsService
     {
         var existing = await _context.DigitalCatalogs.FindAsync(catalog.Id);
         if (existing == null)
+        {
             await _context.DigitalCatalogs.AddAsync(catalog);
+        }
         else
+        {
+            if (!string.IsNullOrWhiteSpace(existing.CoverImageUrl) && existing.CoverImageUrl != catalog.CoverImageUrl)
+                _mediaService.DeleteFile(existing.CoverImageUrl);
+
             _context.Entry(existing).CurrentValues.SetValues(catalog);
+        }
 
         await _context.SaveChangesAsync();
         return catalog;
@@ -71,9 +89,18 @@ public class CmsService : ICmsService
     {
         var existing = await _context.VideoTips.FindAsync(video.Id);
         if (existing == null)
+        {
             await _context.VideoTips.AddAsync(video);
+        }
         else
+        {
+            if (!string.IsNullOrWhiteSpace(existing.ThumbnailUrl) && existing.ThumbnailUrl != video.ThumbnailUrl)
+                _mediaService.DeleteFile(existing.ThumbnailUrl);
+            if (!string.IsNullOrWhiteSpace(existing.VideoUrl) && existing.VideoUrl != video.VideoUrl)
+                _mediaService.DeleteFile(existing.VideoUrl);
+
             _context.Entry(existing).CurrentValues.SetValues(video);
+        }
 
         await _context.SaveChangesAsync();
         return video;
@@ -83,6 +110,10 @@ public class CmsService : ICmsService
     {
         var video = await _context.VideoTips.FindAsync(id);
         if (video == null) return false;
+
+        _mediaService.DeleteFile(video.ThumbnailUrl);
+        _mediaService.DeleteFile(video.VideoUrl);
+
         _context.VideoTips.Remove(video);
         await _context.SaveChangesAsync();
         return true;
@@ -99,9 +130,16 @@ public class CmsService : ICmsService
     {
         var existing = await _context.Events.FindAsync(eventItem.Id);
         if (existing == null)
+        {
             await _context.Events.AddAsync(eventItem);
+        }
         else
+        {
+            if (!string.IsNullOrWhiteSpace(existing.Image) && existing.Image != eventItem.Image)
+                _mediaService.DeleteFile(existing.Image);
+
             _context.Entry(existing).CurrentValues.SetValues(eventItem);
+        }
 
         await _context.SaveChangesAsync();
         return eventItem;
@@ -111,6 +149,8 @@ public class CmsService : ICmsService
     {
         var evt = await _context.Events.FindAsync(id);
         if (evt == null) return false;
+
+        _mediaService.DeleteFile(evt.Image);
         _context.Events.Remove(evt);
         await _context.SaveChangesAsync();
         return true;
