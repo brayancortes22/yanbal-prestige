@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using YanbalPrestige.Api.Data;
@@ -20,6 +21,7 @@ public class LeadsController : ControllerBase
     }
 
     [HttpPost("join")]
+    [AllowAnonymous]
     [EnableRateLimiting("StrictLeadsLimiter")]
     public async Task<IActionResult> SubmitLead([FromBody] LeadProspect lead)
     {

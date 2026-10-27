@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using YanbalPrestige.Api.Common.Security;
 using YanbalPrestige.Api.DTOs;
 using YanbalPrestige.Api.Entities;
 using YanbalPrestige.Api.Services.Interfaces;
@@ -7,6 +9,7 @@ namespace YanbalPrestige.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class CatalogController : ControllerBase
 {
     private readonly ICatalogService _catalogService;
@@ -17,6 +20,7 @@ public class CatalogController : ControllerBase
     }
 
     [HttpGet("products")]
+    [AllowAnonymous]
     public async Task<IActionResult> GetProducts([FromQuery] string? category, [FromQuery] string? q, [FromQuery] bool onlyActive = true)
     {
         var filter = new ProductFilterDto { Category = category, Query = q, OnlyActive = onlyActive };
@@ -25,6 +29,7 @@ public class CatalogController : ControllerBase
     }
 
     [HttpGet("products/{id}")]
+    [AllowAnonymous]
     public async Task<IActionResult> GetProductById(string id)
     {
         var product = await _catalogService.GetProductByIdAsync(id);
@@ -33,6 +38,7 @@ public class CatalogController : ControllerBase
     }
 
     [HttpPost("products")]
+    [Authorize(Roles = AuthRoles.ContentManagers)]
     public async Task<IActionResult> SaveProduct([FromBody] Product product)
     {
         var saved = await _catalogService.SaveProductAsync(product);
@@ -40,6 +46,7 @@ public class CatalogController : ControllerBase
     }
 
     [HttpPatch("products/{id}/toggle")]
+    [Authorize(Roles = AuthRoles.ContentManagers)]
     public async Task<IActionResult> ToggleProduct(string id)
     {
         var success = await _catalogService.ToggleProductStatusAsync(id);
@@ -48,6 +55,7 @@ public class CatalogController : ControllerBase
     }
 
     [HttpDelete("products/{id}")]
+    [Authorize(Roles = AuthRoles.ContentManagers)]
     public async Task<IActionResult> DeleteProduct(string id)
     {
         var success = await _catalogService.DeleteProductAsync(id);

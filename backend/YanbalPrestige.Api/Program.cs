@@ -1,6 +1,10 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using YanbalPrestige.Api.Common.Security;
 using YanbalPrestige.Api.Data;
 using YanbalPrestige.Api.Services.Background;
@@ -8,6 +12,12 @@ using YanbalPrestige.Api.Services.Implementations;
 using YanbalPrestige.Api.Services.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// 0. Límite de cuerpo para subida de videos (150 MB + margen de formulario)
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = 160L * 1024 * 1024;
+});
 
 // 1. Controladores y Documentación OpenAPI nativa de .NET 10
 builder.Services.AddControllers();
@@ -19,6 +29,8 @@ builder.Services.AddScoped<ICatalogService, CatalogService>();
 builder.Services.AddScoped<ICrmService, CrmService>();
 builder.Services.AddScoped<ICmsService, CmsService>();
 builder.Services.AddScoped<IMediaStorageService, MediaStorageService>();
+builder.Services.AddScoped<ITipService, TipService>();
+builder.Services.AddSingleton<ITokenService, TokenService>();
 
 // 3. Servicio en Segundo Plano: Backups Automáticos y Purga (Regla 8 y 19)
 builder.Services.AddHostedService<DatabaseBackupWorker>();
@@ -47,6 +59,12 @@ builder.Services.AddRateLimiter(options =>
     options.AddFixedWindowLimiter("StrictLeadsLimiter", opt =>
     {
         opt.PermitLimit = 5;
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.QueueLimit = 0;
+    });
+    options.AddFixedWindowLimiter("StrictUploadLimiter", opt =>
+    {
+        opt.PermitLimit = 10;
         opt.Window = TimeSpan.FromMinutes(1);
         opt.QueueLimit = 0;
     });
@@ -79,6 +97,59 @@ builder.Services.AddCors(options =>
     });
 });
 
+// 8b. Autenticación JWT: la clave vive en JWT_KEY, nunca en appsettings versionado
+var jwtSettings = builder.Configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>() ?? new JwtSettings();
+var jwtKey = builder.Configuration["Jwt:Key"] ?? Environment.GetEnvironmentVariable("JWT_KEY");
+
+if (string.IsNullOrWhiteSpace(jwtKey))
+{
+    if (builder.Environment.IsDevelopment())
+    {
+        jwtKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(48));
+        Console.WriteLine(
+            "[AVISO] JWT_KEY no configurada. Se generó una clave temporal de desarrollo: " +
+            "los tokens emitidos dejan de ser válidos al reiniciar la API.");
+    }
+    else
+    {
+        throw new InvalidOperationException(
+            "Falta la variable de entorno JWT_KEY. Configure una clave de al menos 32 caracteres antes de iniciar en producción.");
+    }
+}
+
+if (jwtKey.Length < 32)
+{
+    throw new InvalidOperationException("JWT_KEY debe tener al menos 32 caracteres para firmar con HMAC-SHA256.");
+}
+
+builder.Services.Configure<JwtSettings>(options =>
+{
+    options.Issuer = jwtSettings.Issuer;
+    options.Audience = jwtSettings.Audience;
+    options.ExpirationHours = jwtSettings.ExpirationHours;
+    options.Key = jwtKey;
+});
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = jwtSettings.Issuer,
+            ValidateAudience = true,
+            ValidAudience = jwtSettings.Audience,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromMinutes(2),
+            RoleClaimType = System.Security.Claims.ClaimTypes.Role
+        };
+    });
+
+builder.Services.AddAuthorization();
+
 var app = builder.Build();
 
 // 9. Middleware de Cabeceras de Seguridad Bancaria / OWASP
@@ -101,8 +172,9 @@ if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
 app.UseStaticFiles(); // Servir /uploads/ directamente desde el VPS
 app.UseCors("AllowFrontend");
 app.UseRateLimiter();
-app.UseOutputCache();
+app.UseAuthentication();
 app.UseAuthorization();
+app.UseOutputCache();
 app.MapControllers().RequireRateLimiting("ApiGlobalLimiter");
 
 // 12. Inicialización y Semillero Automático de Datos
@@ -116,7 +188,7 @@ using (var scope = app.Services.CreateScope())
     }
     catch
     {
-        // En caso de que el motor MySQL no esté corriendo localmente, se continúa sin bloquear el arranque
+        // Si el motor MySQL no está corriendo localmente, se continúa sin bloquear el arranque
     }
 }
 

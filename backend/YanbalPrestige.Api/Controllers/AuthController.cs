@@ -1,4 +1,7 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
+using YanbalPrestige.Api.Common.Security;
 using YanbalPrestige.Api.DTOs;
 using YanbalPrestige.Api.Services.Interfaces;
 
@@ -6,6 +9,7 @@ namespace YanbalPrestige.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[OutputCache(NoStore = true, Duration = 0)]
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
@@ -56,6 +60,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpGet("users")]
+    [Authorize(Roles = AuthRoles.ContentManagers)]
     public async Task<IActionResult> GetUsers()
     {
         var users = await _authService.GetUsersAsync();
@@ -63,6 +68,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("users")]
+    [Authorize(Roles = AuthRoles.ContentManagers)]
     public async Task<IActionResult> SaveUser([FromBody] UserDto userDto)
     {
         var user = await _authService.SaveUserAsync(userDto);
@@ -70,6 +76,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPatch("users/{id}/toggle")]
+    [Authorize(Roles = AuthRoles.ContentManagers)]
     public async Task<IActionResult> ToggleUser(string id)
     {
         var success = await _authService.ToggleUserStatusAsync(id);
@@ -78,6 +85,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpDelete("users/{id}")]
+    [Authorize(Roles = AuthRoles.ContentManagers)]
     public async Task<IActionResult> DeleteUser(string id)
     {
         var success = await _authService.DeleteUserAsync(id);
