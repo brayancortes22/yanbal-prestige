@@ -63,7 +63,7 @@ export const HeroSlider: React.FC = () => {
                 onClick={() => navigate('/unete')}
                 className="px-6 py-3 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md text-white text-xs font-semibold border border-white/20 transition-all cursor-pointer"
               >
-                Sé Consultora
+                Trabaja con nosotros
               </button>
             </div>
           </div>

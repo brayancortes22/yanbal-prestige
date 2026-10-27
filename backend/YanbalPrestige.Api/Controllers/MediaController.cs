@@ -1,4 +1,8 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
+using Microsoft.AspNetCore.RateLimiting;
+using YanbalPrestige.Api.Common.Security;
 using YanbalPrestige.Api.DTOs;
 using YanbalPrestige.Api.Services.Interfaces;
 
@@ -6,6 +10,8 @@ namespace YanbalPrestige.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize(Roles = AuthRoles.ContentManagers)]
+[OutputCache(NoStore = true, Duration = 0)]
 public class MediaController : ControllerBase
 {
     private readonly IMediaStorageService _mediaService;
@@ -16,6 +22,9 @@ public class MediaController : ControllerBase
     }
 
     [HttpPost("upload")]
+    [EnableRateLimiting("StrictUploadLimiter")]
+    [RequestSizeLimit(167_772_160)] // 160 MB: videos de hasta 150 MB + formulario
+    [RequestFormLimits(MultipartBodyLengthLimit = 167_772_160)]
     public async Task<IActionResult> Upload([FromForm] IFormFile file, [FromForm] string subFolder = "general")
     {
         try

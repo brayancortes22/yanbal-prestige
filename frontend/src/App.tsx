@@ -14,6 +14,8 @@ import { CatalogView } from './views/CatalogView';
 import { ProductDetailView } from './views/ProductDetailView';
 import { AboutView } from './views/AboutView';
 import { EventsView } from './views/EventsView';
+import { TipsView } from './views/TipsView';
+import { TipDetailView } from './views/TipDetailView';
 import { JoinView } from './views/JoinView';
 import { NotFoundView } from './views/NotFoundView';
 
@@ -51,6 +53,8 @@ export const AppLayout: React.FC = () => {
           <Route path="/producto/:id" element={<ProductDetailView />} />
           <Route path="/quienes-somos" element={<AboutView />} />
           <Route path="/eventos" element={<EventsView />} />
+          <Route path="/tips" element={<TipsView />} />
+          <Route path="/tips/:id" element={<TipDetailView />} />
           <Route path="/unete" element={<JoinView />} />
           <Route path="/admin/login" element={<AdminLoginView />} />
           <Route path="/recuperar-clave" element={<ResetPasswordView />} />

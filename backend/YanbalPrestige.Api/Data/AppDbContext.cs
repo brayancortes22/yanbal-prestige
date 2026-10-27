@@ -16,6 +16,7 @@ public class AppDbContext : DbContext
     public DbSet<HeroSlide> HeroSlides => Set<HeroSlide>();
     public DbSet<DigitalCatalog> DigitalCatalogs => Set<DigitalCatalog>();
     public DbSet<VideoTip> VideoTips => Set<VideoTip>();
+    public DbSet<Tip> Tips => Set<Tip>();
     public DbSet<EventItem> Events => Set<EventItem>();
     public DbSet<LeadProspect> Leads => Set<LeadProspect>();
 
@@ -46,5 +47,9 @@ public class AppDbContext : DbContext
         // Índice para búsqueda de PINs de recuperación
         modelBuilder.Entity<PasswordResetPin>()
             .HasIndex(p => new { p.UserId, p.PinCode, p.IsUsed });
+
+        // Índice para el listado público de consejos (activos y ordenados)
+        modelBuilder.Entity<Tip>()
+            .HasIndex(t => new { t.IsActive, t.Order });
     }
 }

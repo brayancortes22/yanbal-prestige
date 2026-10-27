@@ -113,6 +113,8 @@ En lugar de forzar al usuario a scrollear una página kilométrica, se implement
 * `/catalogo` ➔ Catálogo dedicado con buscador y filtros facetados.
 * `/quienes-somos` ➔ Historia del equipo de consultoras y Bento Grid.
 * `/eventos` ➔ Talleres presenciales y virtuales con reserva por WhatsApp.
+* `/tips` ➔ **Tips & Consejos:** artículos de las consultoras con filtro por categoría (`Rutina`, `Cuidado`, `Maquillaje`, `Negocio`).
+* `/tips/:id` ➔ Artículo completo (página indexable, compartible por WhatsApp, con imagen o video).
 * `/unete` ➔ Formulario blindado de captación de consultoras.
 * `/admin/login` ➔ Acceso administrativo para directoras.
 * `/admin` ➔ **Ruta Protegida por `ProtectedRoute`:** Si un usuario no autenticado intenta entrar directamente en `/admin`, es interceptado y redirigido al login.
@@ -127,6 +129,18 @@ En lugar de forzar al usuario a scrollear una página kilométrica, se implement
 
 ### 6. Iconografía Vectorial Oficial (SVGL)
 * Erradicación de enlaces en texto plano. Uso de vectores SVG oficiales de [SVGL](https://svgl.app/) para WhatsApp, Instagram y TikTok, con efectos hover suaves.
+
+### 7. Multimedia en Productos y Eventos (fotos + videos)
+* Componentes reutilizables en `src/components/media/` (`MediaUploader`, `MediaDropzone`, `MediaThumb`, `MediaFrame`, `MediaViewer`, `MediaGallery`).
+* La galería del producto reemplaza la imagen única: principal + miniaturas + zoom óptico solo en fotos + visor a pantalla completa con teclado.
+* Eventos usan la variante compacta con contador y visor.
+* Formatos: JPG, PNG, WebP, AVIF, BMP (8 MB) · MP4, MOV, WebM, M4V (150 MB) · hasta 10 archivos por elemento · también acepta enlaces de YouTube y Vimeo.
+* **Modo demostración:** los archivos elegidos desde el disco son *blob URLs* de sesión (etiqueta ámbar «Sesión») y desaparecen al recargar; los enlaces sí persisten. El punto único de cambio hacia la API real es `useMediaLibrary.addFiles`. Ver `docs/PLAN_MULTIMEDIA_Y_TIPS.md`.
+
+### 8. Módulo Tips & Consejos
+* Artículo completo: título, resumen, categoría, cuerpo largo, portada, video opcional, autora, destacado, orden y visibilidad.
+* Render sin librerías externas (`TipContent.tsx`): párrafos separados por línea en blanco y listas con `- `.
+* Administración en `AdminContentCMSView` ➔ pestaña «Tips & Consejos» (`CmsTipsSection` + `TipForm`).
 
 ---
 
@@ -162,12 +176,23 @@ Para garantizar que el portal soporte picos de tráfico concurrentes desde múlt
 * **Migración Transparente a SQL Server:** Gracias a Entity Framework Core, si la socia Yuli o la directora desean migrar a SQL Server en el futuro, solo se requiere cambiar el provider en `Program.cs` (`options.UseSqlServer(...)`) sin modificar una sola línea de lógica de negocio en los controladores.
 
 ### 2. Modelo de Tablas y Optimización de Índices
-El script `database/yanbal_prestige.sql` estructura las siguientes entidades:
+Entidades de EF Core en `backend/YanbalPrestige.Api/Entities`:
 * `productos`: Catálogo con identificador único, código de referencia, nombre, categoría, precios, URL de imagen, modo de uso en JSON y tip de la consultora.
   * **Índices:** B-Tree en `categoria` y `activo` para búsquedas en tiempo logarítmico O(log N).
 * `eventos`: Agenda de capacitaciones con modalidad, cupos, fecha y flyer.
+* `cms_tips`: Artículos de Tips & Consejos (título, resumen, contenido largo, categoría, portada, video, autora, destacado, orden y visibilidad).
+  * **Índice:** `(activo, orden)` para el listado público.
 * `prospectos_unete`: Registro de aspirantes a consultoras con nombre, WhatsApp, ciudad y auditoría de aceptación de datos.
 * **Collation:** `utf8mb4_unicode_ci` con soporte para tildes en español y caracteres especiales.
+
+### 3. Migraciones Manuales
+`Program.cs` usa `Database.EnsureCreated()`, que **no modifica** una base de datos existente. Cada tabla nueva requiere su script:
+
+| Script | Contenido |
+|---|---|
+| `database/002_cms_tips.sql` | Crea `cms_tips` e índice `(activo, orden)` (idempotente) |
+
+En una base vacía no hace falta: EF crea todo desde las entidades. Para una base con datos, ejecutar el script antes de desplegar la versión que incluye `TipsController`.
 
 ---
 
@@ -186,6 +211,7 @@ El script `database/yanbal_prestige.sql` estructura las siguientes entidades:
 4. **Rate Limiting por IP (`Microsoft.AspNetCore.RateLimiting`):**
    * Límite global de 120 peticiones/minuto por cliente para prevenir saturación de Kestrel.
    * Límite estricto `StrictLeadsLimiter` de 5 peticiones/minuto en `/api/leads/join` para prevenir ataques de *Denial of Inventory* o bombardeo de prospectos ficticios.
+   * Límite `StrictUploadLimiter` de 10 subidas/minuto en `/api/media/upload` y cuerpo máximo de 160 MB en Kestrel (video de 150 MB + formulario), para que nadie llene el disco del VPS.
 5. **Trampa Invisible Honeypot (Regla 8 Protocolo bscl):**
    * En `JoinForm.tsx` y `LeadsController.cs`, existe el campo oculto `company_website` posicionado fuera del viewport (`position: absolute; left: -9999px`).
    * Los usuarios humanos nunca lo ven ni lo llenan. Si un bot o scraper automático inyecta cualquier valor en este campo, el backend lo rechaza instantáneamente con `400 Bad Request` antes de procesar el registro.
@@ -198,6 +224,12 @@ El script `database/yanbal_prestige.sql` estructura las siguientes entidades:
    * Entity Framework Core parametriza automáticamente todas las consultas LINQ, neutralizando cualquier intento de inyección mediante payloads en los campos de búsqueda o filtros.
 9. **Cero Emojis de IA - Iconografía Vectorial Oficial:**
    * Erradicación completa de caracteres emoji genéricos de IA. Toda la interfaz utiliza exclusivamente componentes SVG estructurados de `lucide-react` y vectores oficiales de [SVGL](https://svgl.app/).
+10. **Autenticación JWT Real (HMAC-SHA256):**
+    * `ITokenService` firma tokens con `sub`, `email`, `name` y `role`; `Program.cs` valida emisor, audiencia, firma y vigencia (margen de reloj de 2 minutos).
+    * La clave **nunca** vive en `appsettings.json`: se inyecta con la variable de entorno `JWT_KEY` (mínimo 32 caracteres). En `Development`, si falta, se genera una temporal por proceso y se avisa en consola; en producción la API se niega a arrancar.
+    * `[Authorize]` por defecto en `Auth`, `Catalog`, `Cms`, `Crm`, `Media` y `Tips`; `[AllowAnonymous]` explícito solo en las lecturas públicas (catálogo, eventos, tips, slides y formulario de captación).
+    * Los roles válidos son los del enum `UserRole`: `Director`, `Consultant` y `Client`. La gestión de contenido exige `Director`.
+    * `AuthController` y `MediaController` llevan `[OutputCache(NoStore = true)]` para que la caché de salida no sirva respuestas personalizadas a otro usuario.
 
 ---
 
@@ -229,9 +261,13 @@ npm run dev
 ### 2. Iniciar el Backend (.NET API)
 ```bash
 cd backend/YanbalPrestige.Api
+# Clave de firma JWT (mínimo 32 caracteres). Sin esto, en Development se
+# genera una temporal y los tokens se invalidan al reiniciar.
+$env:JWT_KEY = "cambiar-por-una-clave-larga-y-secreta-de-produccion"
 dotnet run
 # Swagger UI en: http://localhost:5000/swagger
 ```
 
 ### 3. Base de Datos
-Ejecuta el script `database/yanbal_prestige.sql` en MySQL para crear las tablas y sembrar los productos iniciales de Yanbal Colombia.
+* Base nueva: el arranque crea el esquema desde las entidades EF Core.
+* Base existente: ejecutar `database/002_cms_tips.sql` (idempotente) antes de desplegar.

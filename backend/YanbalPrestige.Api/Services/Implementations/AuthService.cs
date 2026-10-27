@@ -9,10 +9,12 @@ namespace YanbalPrestige.Api.Services.Implementations;
 public class AuthService : IAuthService
 {
     private readonly AppDbContext _context;
+    private readonly ITokenService _tokenService;
 
-    public AuthService(AppDbContext context)
+    public AuthService(AppDbContext context, ITokenService tokenService)
     {
         _context = context;
+        _tokenService = tokenService;
     }
 
     public async Task<AuthResponseDto> LoginAsync(LoginRequestDto request)
@@ -25,8 +27,8 @@ public class AuthService : IAuthService
             return new AuthResponseDto { Success = false, Message = "Credenciales incorrectas o usuario inactivo." };
         }
 
-        // Mock token seguro con firma
-        var token = $"yanbal_jwt_{Guid.NewGuid():N}_{user.Role}_{DateTime.UtcNow.Ticks}";
+        // Token JWT firmado con HMAC-SHA256 (clave en JWT_KEY, nunca en el repo)
+        var (token, _) = _tokenService.CreateToken(user);
 
         return new AuthResponseDto
         {

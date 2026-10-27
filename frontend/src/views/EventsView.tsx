@@ -1,6 +1,7 @@
 import React from 'react';
 import { Calendar, Clock, MapPin, ArrowRight } from 'lucide-react';
 import { useConfig } from '../context/ConfigContext';
+import { MediaGallery } from '../components/media/MediaGallery';
 
 export const EventsView: React.FC = () => {
   const { events } = useConfig();
@@ -31,8 +32,13 @@ export const EventsView: React.FC = () => {
             return (
               <div key={ev.id} className="card-luxury rounded-3xl overflow-hidden flex flex-col sm:flex-row">
                 <div className="sm:w-2/5 aspect-[4/3] sm:aspect-auto bg-stone-100 relative">
-                  <img src={ev.image} alt={ev.title} className="w-full h-full object-cover" />
-                  <span className="absolute top-3 left-3 bg-stone-900/90 text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md">
+                  <MediaGallery
+                    media={ev.media}
+                    fallback={ev.image}
+                    alt={ev.title}
+                    variant="compact"
+                  />
+                  <span className="absolute top-3 left-3 bg-stone-900/90 text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md pointer-events-none">
                     {ev.modality}
                   </span>
                 </div>
