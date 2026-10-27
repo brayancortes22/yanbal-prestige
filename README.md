@@ -239,21 +239,24 @@ El sitio público corre en **Vercel** conectado al repositorio de GitHub. Un pus
 
 | Ajuste | Valor |
 |---|---|
-| Proyecto | `yanbal-prestige-web` |
+| Proyecto | `yanbal-prestige-9g5o` |
+| URL pública | https://yanbal-prestige-9g5o.vercel.app |
 | Repositorio | `brayancortes22/yanbal-prestige` |
 | Production Branch | `main` |
 | Root Directory | `frontend` |
 | Framework Preset | Vite |
-| Build Command | `npm run build` |
+| Build Command | `npm run build` (por defecto del preset) |
+| Install Command | `npm install` (por defecto del preset) |
 | Output Directory | `dist` |
-| Node.js | 22.x |
+| Node.js | 24.x |
 
 Notas operativas:
 
 - `frontend/vercel.json` reescribe todas las rutas a `index.html`, por eso `/tips`, `/tips/:id` y `/admin` funcionan con enlace directo.
 - Conectar Git **no** reconstruye lo que ya estaba: hay que empujar un commit nuevo o usar *Redeploy* en el panel.
 - La API (.NET + MySQL) **no** está desplegada todavía. La versión pública funciona con los datos semilla del bundle y guarda las ediciones en `localStorage`, así que el contenido no se comparte entre dispositivos.
-- Existe un segundo proyecto llamado `yanbal-prestige` apuntando a la raíz del repositorio; no se usa y no debe publicarse.
+- El **Root Directory debe ser `frontend`**. Con la raíz del repo, el build muere en 2 s con `sh: line 1: vite: command not found` porque no existe `package.json` arriba.
+- Los proyectos `yanbal-prestige-web` y `yanbal-prestige` (raíz del repo) quedaron obsoletos; solo `yanbal-prestige-9g5o` publica el sitio.
 
 ---
 
