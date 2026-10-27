@@ -24,6 +24,7 @@ export const Footer: React.FC = () => {
             <Link to="/catalogo" className="block hover:text-white transition-colors">Catálogo de Productos</Link>
             <Link to="/quienes-somos" className="block hover:text-white transition-colors">Quiénes Somos & Equipo</Link>
             <Link to="/eventos" className="block hover:text-white transition-colors">Talleres & Agenda</Link>
+            <Link to="/tips" className="block hover:text-white transition-colors">Tips & Consejos</Link>
             <Link to="/unete" className="block hover:text-white transition-colors">Oportunidad Yanbal</Link>
             <Link to="/admin" className="block text-stone-500 hover:text-orange-400 transition-colors pt-1">Acceso Administrativo CMS</Link>
           </div>

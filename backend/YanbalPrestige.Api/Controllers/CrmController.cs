@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using YanbalPrestige.Api.Entities;
 using YanbalPrestige.Api.Services.Interfaces;
@@ -6,6 +7,7 @@ namespace YanbalPrestige.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize(Roles = "Director,Consultant")]
 public class CrmController : ControllerBase
 {
     private readonly ICrmService _crmService;

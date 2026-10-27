@@ -10,7 +10,8 @@ import type {
   HeroSlide,
   LineAccordionItem,
   DigitalCatalogConfig,
-  VideoTipItem
+  VideoTipItem,
+  TipItem
 } from '../types';
 import { 
   productsData, 
@@ -20,6 +21,7 @@ import {
   digitalCatalogData, 
   videoTipsData 
 } from '../data/catalogData';
+import { tipsData } from '../data/tipsData';
 import { useCacheSync } from '../hooks/useCacheSync';
 
 const defaultAnnouncements: AnnouncementConfig = {
@@ -131,6 +133,10 @@ interface ConfigContextType {
   saveVideoTip: (vid: VideoTipItem) => void;
   toggleVideoTip: (id: string) => void;
   deleteVideoTip: (id: string) => void;
+  tips: TipItem[];
+  saveTip: (tip: TipItem) => void;
+  toggleTip: (id: string) => void;
+  deleteTip: (id: string) => void;
   resetRequests: PasswordResetRequest[];
   createResetRequest: (email: string, docId: string) => PasswordResetRequest;
   approveResetRequest: (reqId: string) => void;
@@ -150,6 +156,7 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const { data: linesAccordion, updateData: setLinesAccordion } = useCacheSync<LineAccordionItem[]>('lines_accordion_v1', linesAccordionData);
   const { data: digitalCatalog, updateData: setDigitalCatalog } = useCacheSync<DigitalCatalogConfig>('digital_catalog_v1', digitalCatalogData);
   const { data: videoTips, updateData: setVideoTips } = useCacheSync<VideoTipItem[]>('video_tips_v1', videoTipsData);
+  const { data: tips, updateData: setTips } = useCacheSync<TipItem[]>('tips_v1', tipsData);
   const { data: resetRequests, updateData: setResetRequests } = useCacheSync<PasswordResetRequest[]>('reset_requests_v3', []);
 
   // CRUD Catálogo
@@ -236,6 +243,21 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setVideoTips((prev) => prev.filter((v) => v.id !== id));
   };
 
+  // CRUD Tips & Consejos
+  const saveTip = (tip: TipItem) => {
+    setTips((prev) => {
+      const exists = prev.some((t) => t.id === tip.id);
+      const next = exists ? prev.map((t) => (t.id === tip.id ? tip : t)) : [tip, ...prev];
+      return next.sort((a, b) => a.order - b.order);
+    });
+  };
+  const toggleTip = (id: string) => {
+    setTips((prev) => prev.map((t) => (t.id === id ? { ...t, active: !t.active } : t)));
+  };
+  const deleteTip = (id: string) => {
+    setTips((prev) => prev.filter((t) => t.id !== id));
+  };
+
   // Recuperación OTP
   const createResetRequest = (email: string, docId: string): PasswordResetRequest => {
     const user = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
@@ -273,6 +295,7 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         linesAccordion, saveLineAccordion,
         digitalCatalog, setDigitalCatalog,
         videoTips, saveVideoTip, toggleVideoTip, deleteVideoTip,
+        tips, saveTip, toggleTip, deleteTip,
         resetRequests, createResetRequest, approveResetRequest, completeResetPassword,
       }}
     >

@@ -21,7 +21,8 @@ export const Header: React.FC<HeaderProps> = ({ searchQuery, onSearchChange }) =
     { label: 'Catálogo', path: '/catalogo' },
     { label: 'Quiénes Somos', path: '/quienes-somos' },
     { label: 'Eventos', path: '/eventos' },
-    { label: 'Sé Consultora', path: '/unete' },
+    { label: 'Tips', path: '/tips' },
+    { label: 'Trabaja con nosotros', path: '/unete' },
   ];
 
   return (
@@ -39,7 +40,7 @@ export const Header: React.FC<HeaderProps> = ({ searchQuery, onSearchChange }) =
               to="/unete"
               className="text-[11px] text-orange-400 hover:text-orange-300 font-semibold underline underline-offset-2 transition-colors"
             >
-              Sé Consultora ahora. ¡Regístrate aquí!
+              Trabaja con nosotros. ¡Regístrate aquí!
             </Link>
             <Link
               to="/admin"
@@ -69,7 +70,7 @@ export const Header: React.FC<HeaderProps> = ({ searchQuery, onSearchChange }) =
             </div>
           </Link>
 
-          <div className="hidden lg:flex items-center relative w-64">
+          <div className="hidden xl:flex items-center relative w-64">
             <Search className="w-4 h-4 text-stone-400 absolute left-3" />
             <input
               type="text"
@@ -83,7 +84,7 @@ export const Header: React.FC<HeaderProps> = ({ searchQuery, onSearchChange }) =
             />
           </div>
 
-          <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
+          <nav className="hidden lg:flex items-center gap-5 text-sm font-medium whitespace-nowrap">
             {navItems.map((item) => {
               const isActive = location.pathname === item.path;
               return (
@@ -117,7 +118,7 @@ export const Header: React.FC<HeaderProps> = ({ searchQuery, onSearchChange }) =
 
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 rounded-lg text-stone-700 hover:bg-stone-100 cursor-pointer"
+              className="lg:hidden p-2 rounded-lg text-stone-700 hover:bg-stone-100 cursor-pointer"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -125,7 +126,7 @@ export const Header: React.FC<HeaderProps> = ({ searchQuery, onSearchChange }) =
         </div>
 
         {mobileMenuOpen && (
-          <div className="md:hidden border-t border-stone-200 bg-white/95 backdrop-blur-md px-4 py-4 space-y-2">
+          <div className="lg:hidden border-t border-stone-200 bg-white/95 backdrop-blur-md px-4 py-4 space-y-2">
             {navItems.map((item) => (
               <Link
                 key={item.path}

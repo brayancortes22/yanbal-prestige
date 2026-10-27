@@ -45,7 +45,7 @@ export const AdminLeadsView: React.FC = () => {
               Reclutamiento & Crecimiento de Red
             </span>
             <h2 className="font-editorial text-2xl font-bold text-stone-900">
-              Aspirantes Registradas en "Sé Consultora"
+              Aspirantes Registradas en "Trabaja con nosotros"
             </h2>
             <p className="text-xs text-stone-500">
               Prospectos captados a través del formulario público blindado con Honeypot y Ley 1581 Habeas Data.
