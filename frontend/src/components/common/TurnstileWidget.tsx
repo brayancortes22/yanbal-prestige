@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { TURNSTILE_SITE_KEY } from '../../config/turnstile';
 
 declare global {
   interface Window {
@@ -25,60 +26,67 @@ interface TurnstileWidgetProps {
   siteKey?: string;
 }
 
+const SCRIPT_ID = 'cf-turnstile-script';
+
 export const TurnstileWidget: React.FC<TurnstileWidgetProps> = ({
   onSuccess,
-  siteKey = '1x00000000000000000000AA' // Cloudflare official test sitekey (Always passes)
+  siteKey = TURNSTILE_SITE_KEY
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
 
+  // El callback del padre cambia de identidad en cada render. Guardarlo en un
+  // ref evita reiniciar el widget (que lo dejaba atascado en "Verificando...").
+  const onSuccessRef = useRef(onSuccess);
   useEffect(() => {
-    // 1. Inyectar script oficial de Cloudflare Turnstile si no existe
-    const scriptId = 'cf-turnstile-script';
-    let script = document.getElementById(scriptId) as HTMLScriptElement | null;
+    onSuccessRef.current = onSuccess;
+  }, [onSuccess]);
+
+  useEffect(() => {
+    if (!siteKey) return;
 
     const renderWidget = () => {
-      if (window.turnstile && containerRef.current && !widgetIdRef.current) {
-        widgetIdRef.current = window.turnstile.render(containerRef.current, {
-          sitekey: siteKey,
-          theme: 'light',
-          size: 'flexible',
-          callback: (token: string) => {
-            onSuccess(token);
-          },
-          'error-callback': () => {
-            // Fallback para entornos locales o bloqueos de red
-            onSuccess('turnstile_local_fallback_token');
-          }
-        });
-      }
+      if (!window.turnstile || !containerRef.current || widgetIdRef.current) return;
+      widgetIdRef.current = window.turnstile.render(containerRef.current, {
+        sitekey: siteKey,
+        theme: 'light',
+        size: 'flexible',
+        callback: (token: string) => onSuccessRef.current(token)
+      });
     };
 
-    if (!script) {
-      script = document.createElement('script');
-      script.id = scriptId;
+    const existingScript = document.getElementById(SCRIPT_ID) as HTMLScriptElement | null;
+
+    if (!existingScript) {
+      const script = document.createElement('script');
+      script.id = SCRIPT_ID;
       script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
       script.async = true;
       script.defer = true;
-      script.onload = () => renderWidget();
+      script.onload = renderWidget;
       document.head.appendChild(script);
     } else if (window.turnstile) {
       renderWidget();
+    } else {
+      existingScript.addEventListener('load', renderWidget, { once: true });
     }
 
     return () => {
+      existingScript?.removeEventListener('load', renderWidget);
       if (widgetIdRef.current && window.turnstile) {
         window.turnstile.remove(widgetIdRef.current);
         widgetIdRef.current = null;
       }
     };
-  }, [onSuccess, siteKey]);
+  }, [siteKey]);
+
+  if (!siteKey) return null;
 
   return (
     <div className="my-2 flex flex-col items-center justify-center">
       <div ref={containerRef} className="cf-turnstile min-h-[45px] w-full max-w-[300px]" />
       <span className="text-[10px] text-stone-400 mt-1 flex items-center gap-1">
-        🔒 Blindaje perimetral activo contra robots y bots
+        Blindaje perimetral activo contra robots y bots
       </span>
     </div>
   );
