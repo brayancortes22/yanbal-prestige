@@ -233,6 +233,30 @@ En una base vacía no hace falta: EF crea todo desde las entidades. Para una bas
 
 ---
 
+## ☁️ Despliegue del Frontend en Vercel
+
+El sitio público corre en **Vercel** conectado al repositorio de GitHub. Un push a `main` construye y publica automáticamente.
+
+| Ajuste | Valor |
+|---|---|
+| Proyecto | `yanbal-prestige-web` |
+| Repositorio | `brayancortes22/yanbal-prestige` |
+| Production Branch | `main` |
+| Root Directory | `frontend` |
+| Framework Preset | Vite |
+| Build Command | `npm run build` |
+| Output Directory | `dist` |
+| Node.js | 22.x |
+
+Notas operativas:
+
+- `frontend/vercel.json` reescribe todas las rutas a `index.html`, por eso `/tips`, `/tips/:id` y `/admin` funcionan con enlace directo.
+- Conectar Git **no** reconstruye lo que ya estaba: hay que empujar un commit nuevo o usar *Redeploy* en el panel.
+- La API (.NET + MySQL) **no** está desplegada todavía. La versión pública funciona con los datos semilla del bundle y guarda las ediciones en `localStorage`, así que el contenido no se comparte entre dispositivos.
+- Existe un segundo proyecto llamado `yanbal-prestige` apuntando a la raíz del repositorio; no se usa y no debe publicarse.
+
+---
+
 ## 🎨 Integración con Figma Desktop
 
 El proyecto está diseñado para conectarse directamente con **Figma Desktop** con Auto-Layout nativo:
