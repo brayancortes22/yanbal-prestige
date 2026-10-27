@@ -4,6 +4,7 @@ import { KeyRound, ShieldCheck, ArrowRight, MessageCircle, CheckCircle } from 'l
 import { useConfig } from '../../context/ConfigContext';
 import type { PasswordResetRequest } from '../../types';
 import { TurnstileWidget } from '../../components/common/TurnstileWidget';
+import { isTurnstileEnabled } from '../../config/turnstile';
 
 export const ResetPasswordView: React.FC = () => {
   const { createResetRequest, completeResetPassword, resetRequests } = useConfig();
@@ -29,7 +30,7 @@ export const ResetPasswordView: React.FC = () => {
       return;
     }
 
-    if (!turnstileToken) {
+    if (isTurnstileEnabled && !turnstileToken) {
       setErrorMsg('Por favor complete la verificación de seguridad anti-bots.');
       return;
     }

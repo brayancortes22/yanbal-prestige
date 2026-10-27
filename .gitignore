@@ -4,6 +4,11 @@ frontend/dist/
 frontend/.vite/
 *.log
 
+# Variables de entorno (nunca versionar; .env.example sí)
+.env
+.env.*
+!.env.example
+
 # .NET
 **/bin/
 **/obj/
