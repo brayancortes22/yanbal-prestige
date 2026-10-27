@@ -215,6 +215,10 @@ En una base vacía no hace falta: EF crea todo desde las entidades. Para una bas
 5. **Trampa Invisible Honeypot (Regla 8 Protocolo bscl):**
    * En `JoinForm.tsx` y `LeadsController.cs`, existe el campo oculto `company_website` posicionado fuera del viewport (`position: absolute; left: -9999px`).
    * Los usuarios humanos nunca lo ven ni lo llenan. Si un bot o scraper automático inyecta cualquier valor en este campo, el backend lo rechaza instantáneamente con `400 Bad Request` antes de procesar el registro.
+5b. **Cloudflare Turnstile (estado actual):**
+   * El widget se monta solo si existe `VITE_TURNSTILE_SITEKEY` (ver `frontend/src/config/turnstile.ts` y `.env.example`). Sin esa variable no se renderiza nada, así que el sitio no muestra el aviso *"Solo para pruebas"* de Cloudflare.
+   * Las claves de prueba (`1x0000...`) ya no están en el código del cliente. Al publicar la API hay que definir la Site Key real en Vercel y la Secret Key en `CloudflareTurnstile__SecretKey`; el backend rechaza tokens vacíos, por eso ambas se activan juntas.
+   * El callback del widget se guarda en un `ref`: antes el efecto se reiniciaba en cada render y el reto quedaba atascado en "Verificando...".
 6. **Blindaje Legal Anti-Demandas (Ley 1581 de 2012 / SIC Colombia):**
    * Todo formulario incluye casilla de consentimiento informado explícito obligatorio conforme al régimen de Habeas Data colombiano.
    * Se almacena el timestamp ISO de aceptación para trazabilidad ante requerimientos de la Superintendencia de Industria y Comercio (SIC).
