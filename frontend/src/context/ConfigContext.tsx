@@ -1,4 +1,4 @@
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useEffect } from 'react';
 import type { 
   AnnouncementConfig, 
   AppUser, 
@@ -23,6 +23,7 @@ import {
 } from '../data/catalogData';
 import { tipsData } from '../data/tipsData';
 import { useCacheSync } from '../hooks/useCacheSync';
+import { api, isApiConfigured } from '../services/api';
 
 const defaultAnnouncements: AnnouncementConfig = {
   topBannerText: 'Campaña 05 Yanbal: Envíos gratis por compras superiores a $150.000 COP y asesoría dermocosmética sin costo.',
@@ -158,6 +159,42 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const { data: videoTips, updateData: setVideoTips } = useCacheSync<VideoTipItem[]>('video_tips_v1', videoTipsData);
   const { data: tips, updateData: setTips } = useCacheSync<TipItem[]>('tips_v1', tipsData);
   const { data: resetRequests, updateData: setResetRequests } = useCacheSync<PasswordResetRequest[]>('reset_requests_v3', []);
+
+  // Sincronización en segundo plano con la API y Pulso Wake-Up para Render
+  useEffect(() => {
+    if (!isApiConfigured()) return;
+
+    // Wake-up ping para mantener el backend activo
+    api.checkHealth();
+
+    // Sincronizar catálogo si la API responde
+    api.getProducts().then((remoteProds) => {
+      if (remoteProds && remoteProds.length > 0) {
+        setProducts(remoteProds);
+      }
+    });
+
+    // Sincronizar tips
+    api.getTips().then((remoteTips) => {
+      if (remoteTips && remoteTips.length > 0) {
+        setTips(remoteTips);
+      }
+    });
+
+    // Sincronizar eventos
+    api.getEvents().then((remoteEvents) => {
+      if (remoteEvents && remoteEvents.length > 0) {
+        setEvents(remoteEvents);
+      }
+    });
+
+    // Sincronizar hero slides
+    api.getHeroSlides().then((remoteSlides) => {
+      if (remoteSlides && remoteSlides.length > 0) {
+        setHeroSlides(remoteSlides);
+      }
+    });
+  }, [setProducts, setTips, setEvents, setHeroSlides]);
 
   // CRUD Catálogo
   const saveProduct = (prod: Product) => {
