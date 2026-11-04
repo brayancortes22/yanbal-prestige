@@ -117,6 +117,8 @@ No se creó `media_assets`. Se descartó a propósito: sería una tabla sin cons
 3. **El login del frontend también es local** (`AuthContext`), no llama a `/api/auth/login`, así que el JWT del backend todavía no se usa desde la interfaz.
 4. **Productos y eventos guardan solo `imagen_url`** en la API; la galería múltiple existe únicamente en el frontend.
 5. `media_assets` pendiente de definición.
+6. **El formulario «Trabaja con nosotros» no guarda prospectos.** `JoinForm.handleSubmit` solo muestra el mensaje de éxito; no escribe en el CMS ni llama a `/api/leads/join`. Admin → Prospectos muestra tres registros de ejemplo en `AdminLeadsView` (`mockLeads`). Decisión del 27/10: se deja así para la reunión y se conecta al desplegar la API.
+7. **Turnstile está desactivado en el cliente** hasta que exista una Site Key real (`VITE_TURNSTILE_SITEKEY`). Al publicar la API hay que activarlo en ambos lados o `LeadsController` rechazará las postulaciones por token vacío.
 
 ---
 
