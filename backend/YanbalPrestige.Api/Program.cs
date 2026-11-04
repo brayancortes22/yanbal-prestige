@@ -89,6 +89,7 @@ builder.Services.AddCors(options =>
                 "http://localhost:3000", 
                 "http://127.0.0.1:5173",
                 "https://yanbal-prestige-web.vercel.app",
+                "https://yanbal-prestige-9g5o.vercel.app",
                 "https://yanbalprestige.com"
               )
               .AllowAnyHeader()
@@ -176,6 +177,14 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseOutputCache();
 app.MapControllers().RequireRateLimiting("ApiGlobalLimiter");
+
+// 11b. Health Check para Keep-Alive y Monitoreo
+app.MapGet("/health", () => Results.Ok(new 
+{ 
+    status = "healthy", 
+    service = "YanbalPrestige.Api", 
+    timestamp = DateTime.UtcNow 
+})).AllowAnonymous();
 
 // 12. Inicialización y Semillero Automático de Datos
 using (var scope = app.Services.CreateScope())

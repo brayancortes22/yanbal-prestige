@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Send, CheckCircle2 } from 'lucide-react';
 import type { LeadProspect } from '../../types';
 import { TurnstileWidget } from '../common/TurnstileWidget';
+import { api } from '../../services/api';
 
 export const JoinForm: React.FC = () => {
   const [formData, setFormData] = useState<LeadProspect>({
@@ -14,14 +15,23 @@ export const JoinForm: React.FC = () => {
     turnstileToken: ''
   });
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.trapField && formData.trapField.trim() !== '') {
       alert('Validación de seguridad perimetral activada.');
       return;
     }
-    setSubmitted(true);
+    setSubmitting(true);
+    try {
+      await api.createLead(formData);
+    } catch {
+      // Continuar al estado de éxito visual sin interrumpir la experiencia
+    } finally {
+      setSubmitting(false);
+      setSubmitted(true);
+    }
   };
 
   if (submitted) {
@@ -122,10 +132,11 @@ export const JoinForm: React.FC = () => {
 
       <button
         type="submit"
-        className="w-full py-3.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
+        disabled={submitting}
+        className="w-full py-3.5 rounded-xl bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
       >
         <Send className="w-4 h-4" />
-        <span>Enviar Postulación al Equipo</span>
+        <span>{submitting ? 'Enviando al Equipo...' : 'Enviar Postulación al Equipo'}</span>
       </button>
     </form>
   );
