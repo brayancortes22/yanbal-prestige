@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ZoomIn, Sparkles, ShieldCheck, Expand, Play } from 'lucide-react';
+import { ZoomIn, Expand, Play } from 'lucide-react';
 import type { Product } from '../../types';
 import { resolveMediaList } from '../media/mediaUtils';
 import { MediaFrame } from '../media/MediaFrame';
@@ -112,23 +112,6 @@ export const ProductGalleryZoom: React.FC<Props> = ({ product }) => {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3 pt-2">
-        <div className="p-3 rounded-2xl bg-orange-50/50 border border-orange-100/70 flex items-center gap-2.5">
-          <Sparkles className="w-4 h-4 text-orange-600 shrink-0" />
-          <div>
-            <span className="text-[11px] font-bold text-stone-900 block">Fórmula Botánica</span>
-            <span className="text-[10px] text-stone-500">Ingredientes activos puros</span>
-          </div>
-        </div>
-
-        <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200/70 flex items-center gap-2.5">
-          <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-          <div>
-            <span className="text-[11px] font-bold text-stone-900 block">100% Original Yanbal</span>
-            <span className="text-[10px] text-stone-500">Garantía oficial de fábrica</span>
-          </div>
-        </div>
-      </div>
 
       {viewerIndex !== null && (
         <MediaViewer

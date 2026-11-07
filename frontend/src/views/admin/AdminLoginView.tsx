@@ -1,140 +1,205 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Lock, Mail, KeyRound, ArrowRight } from 'lucide-react';
+import { Lock, Mail, KeyRound, ArrowRight, ShieldCheck, FlaskConical } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { useConfig } from '../../context/ConfigContext';
+import { isApiConfigured } from '../../services/api';
+import type { UserRole } from '../../types';
+
+/**
+ * Cuentas de demostración exactas (no coincidencias por substring).
+ * Solo se aceptan cuando VITE_API_URL está vacía; con API real el login
+ * pasa por /api/Auth/login y el backend verifica PBKDF2.
+ */
+const demoAccounts: {
+  email: string;
+  password: string;
+  name: string;
+  role: UserRole;
+}[] = [
+  {
+    email: 'yuli.directora@yanbalprestige.com',
+    password: 'yanbal2026',
+    name: 'Yuli Cortés',
+    role: 'DIRECTORA',
+  },
+  {
+    email: 'carolina.consultora@yanbalprestige.com',
+    password: 'yanbal2026',
+    name: 'Carolina Mejía',
+    role: 'CONSULTORA',
+  },
+];
 
 export const AdminLoginView: React.FC = () => {
-  const [emailInput, setEmailInput] = useState('yuli.directora@yanbalprestige.com');
-  const [passwordInput, setPasswordInput] = useState('yanbal2026');
+  const [emailInput, setEmailInput] = useState('');
+  const [passwordInput, setPasswordInput] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
-  const { login } = useAuth();
-  const { users } = useConfig();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { login, loginWithApi } = useAuth();
   const navigate = useNavigate();
+  const apiMode = isApiConfigured();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const redirectByRole = (role: UserRole) => {
+    if (role === 'CONSULTORA') navigate('/consultora', { replace: true });
+    else if (role === 'CLIENTE') navigate('/', { replace: true });
+    else navigate('/admin', { replace: true });
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
+    setIsSubmitting(true);
 
     const trimmedEmail = emailInput.trim().toLowerCase();
-    const matchedUser = users.find((u) => u.email.toLowerCase() === trimmedEmail);
 
-    if (matchedUser || trimmedEmail.includes('admin') || trimmedEmail.includes('directora') || trimmedEmail.includes('consultora')) {
-      const userRole = matchedUser ? matchedUser.role : trimmedEmail.includes('consultora') ? 'CONSULTORA' : 'DIRECTORA';
-      const userName = matchedUser ? matchedUser.name : trimmedEmail.includes('consultora') ? 'Carolina Mejía' : 'Yuli Cortés';
-
-      login('jwt_token_secure_yanbal_prestige', userName, userRole, trimmedEmail);
-
-      // Redirección inteligente según el rol (Inspirado en autogestion-sena)
-      if (userRole === 'CONSULTORA') {
-        navigate('/consultora', { replace: true });
-      } else {
-        navigate('/admin', { replace: true });
+    try {
+      if (apiMode) {
+        const role = await loginWithApi(trimmedEmail, passwordInput);
+        redirectByRole(role);
+        return;
       }
-    } else {
-      setErrorMsg('Usuario o correo no reconocido. Verifique sus credenciales.');
+
+      const account = demoAccounts.find(
+        (candidate) =>
+          candidate.email === trimmedEmail && candidate.password === passwordInput
+      );
+
+      if (!account) {
+        setErrorMsg('Correo o contraseña incorrectos. En modo demo use una de las cuentas autorizadas.');
+        return;
+      }
+
+      login(`demo-${account.role.toLowerCase()}-${Date.now()}`, account.name, account.role, account.email, true);
+      redirectByRole(account.role);
+    } catch (error) {
+      setErrorMsg(error instanceof Error ? error.message : 'No fue posible iniciar sesión.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="py-20 bg-brand-cream min-h-[75vh] flex items-center justify-center px-4 animate-fadeIn">
-      <div className="max-w-md w-full bg-white p-8 sm:p-10 rounded-3xl border border-stone-200 shadow-2xl space-y-6">
-        
-        <div className="text-center space-y-2">
-          <div className="w-12 h-12 rounded-2xl bg-orange-50 text-orange-600 mx-auto flex items-center justify-center">
-            <Lock className="w-6 h-6" />
+    <div className="flex min-h-[75vh] items-center justify-center bg-brand-cream px-4 py-20 animate-fadeIn">
+      <div className="w-full max-w-md space-y-5 rounded-3xl border border-stone-200 bg-white p-8 shadow-2xl sm:p-10">
+        <div className="space-y-2 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-apricot-soft text-brand-apricot">
+            <Lock className="h-6 w-6" />
           </div>
           <h2 className="font-editorial text-2xl font-bold text-stone-900">
-            Ingreso al Sistema Yanbal Prestige
+            Ingreso al sistema Yanbal Prestige
           </h2>
           <p className="text-xs text-stone-500">
-            Acceso unificado con redirección inteligente por rol (Directora / Consultora).
+            Acceso por rol para Directoras y Consultoras de la red.
           </p>
         </div>
 
+        {apiMode ? (
+          <div className="flex items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-semibold text-emerald-800">
+            <ShieldCheck className="h-3.5 w-3.5" />
+            Conexión segura con la API verificada
+          </div>
+        ) : (
+          <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] leading-relaxed text-amber-900">
+            <FlaskConical className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>
+              <strong>Modo demostración local.</strong> Sin API configurada los datos viven en
+              este navegador. Use las cuentas demo de abajo.
+            </span>
+          </div>
+        )}
+
         {errorMsg && (
-          <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 text-center font-medium">
+          <div
+            role="alert"
+            className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-center text-xs font-medium text-rose-700"
+          >
             {errorMsg}
           </div>
         )}
 
-        <form onSubmit={handleLogin} className="space-y-4">
+        <form onSubmit={handleLogin} className="space-y-3.5">
           <div>
-            <label className="block text-xs font-semibold text-stone-700 mb-1">Correo Electrónico</label>
+            <label htmlFor="login-email" className="mb-1 block text-xs font-semibold text-stone-700">
+              Correo electrónico
+            </label>
             <div className="relative">
-              <Mail className="w-4 h-4 text-stone-400 absolute left-3.5 top-3" />
+              <Mail className="absolute left-3.5 top-3 h-4 w-4 text-stone-400" />
               <input
+                id="login-email"
                 type="email"
                 required
+                autoComplete="username"
                 value={emailInput}
                 onChange={(e) => setEmailInput(e.target.value)}
                 placeholder="correo@yanbalprestige.com"
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-stone-200 text-xs bg-stone-50/50"
+                className="w-full rounded-xl border border-stone-200 bg-stone-50/50 py-2.5 pl-10 pr-4 text-xs"
               />
             </div>
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-semibold text-stone-700">Contraseña</label>
-              <Link to="/recuperar-clave" className="text-[11px] text-orange-600 hover:underline">
+            <div className="mb-1 flex items-center justify-between">
+              <label htmlFor="login-password" className="text-xs font-semibold text-stone-700">
+                Contraseña
+              </label>
+              <Link to="/recuperar-clave" className="text-[11px] text-brand-apricot hover:underline">
                 ¿Olvidaste tu contraseña?
               </Link>
             </div>
             <div className="relative">
-              <KeyRound className="w-4 h-4 text-stone-400 absolute left-3.5 top-3" />
+              <KeyRound className="absolute left-3.5 top-3 h-4 w-4 text-stone-400" />
               <input
+                id="login-password"
                 type="password"
                 required
+                autoComplete="current-password"
                 value={passwordInput}
                 onChange={(e) => setPasswordInput(e.target.value)}
                 placeholder="••••••••"
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-stone-200 text-xs bg-stone-50/50"
+                className="w-full rounded-xl border border-stone-200 bg-stone-50/50 py-2.5 pl-10 pr-4 text-xs"
               />
             </div>
           </div>
 
           <button
             type="submit"
-            className="w-full py-3 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
+            disabled={isSubmitting}
+            className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-brand-apricot py-2.5 text-xs font-semibold text-white shadow-sm transition-all hover:bg-brand-apricot-dark disabled:cursor-wait disabled:opacity-60"
           >
-            <span>Ingresar al Portal</span>
-            <ArrowRight className="w-4 h-4" />
+            <span>{isSubmitting ? 'Verificando...' : 'Ingresar'}</span>
+            <ArrowRight className="h-4 w-4" />
           </button>
         </form>
 
-        {/* Acceso rápido a perfiles de demostración */}
-        <div className="pt-2 border-t border-stone-100 space-y-2">
-          <span className="text-[10px] text-stone-400 uppercase tracking-widest block text-center font-bold">
-            Perfiles Demo para Mostrar a Yuli:
-          </span>
-          <div className="grid grid-cols-2 gap-2 text-[11px]">
-            <button
-              type="button"
-              onClick={() => {
-                setEmailInput('yuli.directora@yanbalprestige.com');
-                setPasswordInput('yanbal2026');
-              }}
-              className="p-2 rounded-xl border border-orange-200 bg-orange-50/50 text-orange-950 font-medium text-left hover:bg-orange-100 transition-colors"
-            >
-              <strong className="block text-orange-700">Rol: Directora</strong>
-              <span>yuli.directora@...</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setEmailInput('carolina.consultora@yanbalprestige.com');
-                setPasswordInput('yanbal2026');
-              }}
-              className="p-2 rounded-xl border border-amber-200 bg-amber-50/50 text-amber-950 font-medium text-left hover:bg-amber-100 transition-colors"
-            >
-              <strong className="block text-amber-700">Rol: Consultora</strong>
-              <span>carolina.consultora@...</span>
-            </button>
+        {!apiMode && (
+          <div className="space-y-2 border-t border-stone-100 pt-3">
+            <span className="block text-center text-[10px] font-bold uppercase tracking-widest text-stone-400">
+              Cuentas de demostración
+            </span>
+            <div className="grid grid-cols-2 gap-2 text-[11px]">
+              {demoAccounts.map((account) => (
+                <button
+                  key={account.email}
+                  type="button"
+                  onClick={() => {
+                    setEmailInput(account.email);
+                    setPasswordInput(account.password);
+                    setErrorMsg('');
+                  }}
+                  className="rounded-xl border border-brand-apricot/20 bg-brand-apricot-soft/50 p-2 text-left font-medium text-stone-800 transition-colors hover:bg-brand-apricot-soft"
+                >
+                  <strong className="block text-brand-apricot-dark">
+                    {account.role === 'DIRECTORA' ? 'Directora' : 'Consultora'}
+                  </strong>
+                  <span className="block truncate">{account.email}</span>
+                </button>
+              ))}
+            </div>
+            <p className="text-center text-[10px] text-stone-400">
+              Contraseña demo: <code className="font-mono">yanbal2026</code>
+            </p>
           </div>
-        </div>
-
+        )}
       </div>
     </div>
   );

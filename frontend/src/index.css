@@ -1,4 +1,22 @@
 @import "tailwindcss";
+@source "../index.html";
+@source "../src/**/*.{js,ts,jsx,tsx}";
+@source "./**/*.{js,ts,jsx,tsx}";
+
+/* Tokens de marca expuestos como utilidades de Tailwind v4.
+   Antes `bg-brand-cream` no generaba ninguna clase y el color solo
+   funcionaba por el fondo del body. */
+@theme {
+  --color-brand-apricot: #e85d36;
+  --color-brand-apricot-dark: #c94a27;
+  --color-brand-apricot-soft: #fdf1ed;
+  --color-brand-cream: #faf8f5;
+  --color-brand-gold: #c9a227;
+  --color-brand-gold-soft: #e8d48b;
+  --color-brand-espresso: #3b241d;
+  --color-brand-sand: #efe6da;
+  --color-brand-ink: #1c1917;
+}
 
 @layer base {
   :root {

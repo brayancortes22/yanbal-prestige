@@ -1,17 +1,19 @@
 import React, { useMemo, useState } from 'react';
-import { Search, Plus } from 'lucide-react';
+import { Search, Plus, UploadCloud } from 'lucide-react';
 import { AdminNav } from '../../components/admin/AdminNav';
 import { ProductForm } from '../../components/admin/catalog/ProductForm';
 import { ProductTable } from '../../components/admin/catalog/ProductTable';
+import { CatalogImportModal } from '../../components/admin/CatalogImportModal';
 import { useConfig } from '../../context/ConfigContext';
 import type { Product } from '../../types';
 
 export const AdminCatalogView: React.FC = () => {
-  const { products, saveProduct, toggleProductActive, deleteProduct } = useConfig();
+  const { products, saveProduct, toggleProductActive, deleteProduct, bulkAddProducts } = useConfig();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('todas');
   const [statusFilter, setStatusFilter] = useState<'todos' | 'activos' | 'pausados'>('todos');
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [suggestedCode, setSuggestedCode] = useState('REF-0000');
 
@@ -60,19 +62,28 @@ export const AdminCatalogView: React.FC = () => {
               Catálogo Centralizado de Productos & SKU
             </h2>
             <p className="text-xs text-stone-500">
-              Crea, edita datos, pausa o activa referencias oficiales Yanbal con control de
-              inventario.
+              Crea, edita datos, importa por CSV o activa referencias oficiales con control de inventario.
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={handleOpenCreate}
-            className="px-4 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer self-start md:self-auto"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Nuevo Producto</span>
-          </button>
+          <div className="flex items-center gap-2 self-start md:self-auto">
+            <button
+              type="button"
+              onClick={() => setIsImportOpen(true)}
+              className="px-3.5 py-2.5 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+            >
+              <UploadCloud className="w-4 h-4 text-orange-600" />
+              <span>Importar Catálogo CSV</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleOpenCreate}
+              className="px-4 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Nuevo Producto</span>
+            </button>
+          </div>
         </div>
 
         {isFormOpen && (
@@ -138,6 +149,12 @@ export const AdminCatalogView: React.FC = () => {
           }}
         />
       </div>
+
+      <CatalogImportModal
+        isOpen={isImportOpen}
+        onClose={() => setIsImportOpen(false)}
+        onImport={bulkAddProducts}
+      />
     </div>
   );
 };

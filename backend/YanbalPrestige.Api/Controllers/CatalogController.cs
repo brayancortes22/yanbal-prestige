@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 using YanbalPrestige.Api.Common.Security;
 using YanbalPrestige.Api.DTOs;
 using YanbalPrestige.Api.Entities;
@@ -21,6 +22,7 @@ public class CatalogController : ControllerBase
 
     [HttpGet("products")]
     [AllowAnonymous]
+    [OutputCache(PolicyName = "PublicCatalog")]
     public async Task<IActionResult> GetProducts([FromQuery] string? category, [FromQuery] string? q, [FromQuery] bool onlyActive = true)
     {
         var filter = new ProductFilterDto { Category = category, Query = q, OnlyActive = onlyActive };

@@ -7,9 +7,11 @@ public class LoginRequestDto
 {
     [Required]
     [EmailAddress]
+    [MaxLength(150)]
     public string Email { get; set; } = string.Empty;
 
     [Required]
+    [MaxLength(128)]
     public string Password { get; set; } = string.Empty;
 }
 
@@ -17,6 +19,7 @@ public class RequestPinDto
 {
     [Required]
     [EmailAddress]
+    [MaxLength(150)]
     public string Email { get; set; } = string.Empty;
 
     public string? TurnstileToken { get; set; }
@@ -26,14 +29,15 @@ public class ResetPasswordWithPinDto
 {
     [Required]
     [EmailAddress]
+    [MaxLength(150)]
     public string Email { get; set; } = string.Empty;
 
     [Required]
-    [StringLength(6, MinimumLength = 6)]
+    [RegularExpression(@"^\d{6}$", ErrorMessage = "El PIN debe tener 6 dígitos.")]
     public string PinCode { get; set; } = string.Empty;
 
     [Required]
-    [MinLength(6)]
+    [StringLength(128, MinimumLength = 8)]
     public string NewPassword { get; set; } = string.Empty;
 
     public string? TurnstileToken { get; set; }
@@ -55,4 +59,8 @@ public class UserDto
     public UserRole Role { get; set; }
     public string Phone { get; set; } = string.Empty;
     public bool IsActive { get; set; }
+
+    /// <summary>Opcional. Solo se usa al crear o cambiar la contraseña de un usuario.</summary>
+    [StringLength(128, MinimumLength = 8)]
+    public string? Password { get; set; }
 }

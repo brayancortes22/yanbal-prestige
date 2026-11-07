@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 using YanbalPrestige.Api.Data;
 using YanbalPrestige.Api.Entities;
 using YanbalPrestige.Api.Services.Interfaces;
@@ -50,15 +51,41 @@ public class LeadsController : ControllerBase
             return BadRequest(new { message = "Nombre y WhatsApp son requeridos." });
         }
 
-        // 4. Sanitización contra caracteres de control
-        lead.FullName = lead.FullName.Trim();
-        lead.Phone = lead.Phone.Trim();
-        lead.City = lead.City.Trim();
+        // 4. Sanitización contra caracteres de control y longitudes seguras
+        lead.FullName = Sanitize(lead.FullName, 150);
+        lead.Phone = Sanitize(lead.Phone, 30);
+        lead.City = Sanitize(lead.City, 100);
+        lead.RoleInterest = Sanitize(lead.RoleInterest, 50).ToLowerInvariant();
+
+        if (lead.FullName.Length < 3 || lead.City.Length < 2)
+            return BadRequest(new { message = "Nombre y ciudad no son válidos." });
+
+        if (lead.RoleInterest is not ("consultora" or "directora" or "cliente"))
+            return BadRequest(new { message = "Oportunidad de interés no válida." });
+
+        // 5. Evita duplicados por doble clic o reenvío (ventana de 5 minutos).
+        var window = DateTime.UtcNow.AddMinutes(-5);
+        var duplicated = await _context.Leads.AsNoTracking().AnyAsync(l =>
+            l.Phone == lead.Phone && l.RoleInterest == lead.RoleInterest && l.CreatedAt >= window);
+        if (duplicated)
+            return Ok(new { success = true, message = "Postulación ya registrada." });
+
         lead.CreatedAt = DateTime.UtcNow;
 
         await _context.Leads.AddAsync(lead);
         await _context.SaveChangesAsync();
 
         return Ok(new { success = true, message = "Postulación registrada exitosamente." });
+    }
+
+    /// <summary>Quita caracteres de control y recorta a la longitud máxima.</summary>
+    private static string Sanitize(string value, int maxLength)
+    {
+        var clean = new string(value
+            .Where(c => !char.IsControl(c))
+            .ToArray())
+            .Trim();
+
+        return clean.Length <= maxLength ? clean : clean[..maxLength];
     }
 }

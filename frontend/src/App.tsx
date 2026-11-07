@@ -25,6 +25,7 @@ import { ResetPasswordView } from './views/auth/ResetPasswordView';
 
 // Páginas Centralizadas de Administración
 import { AdminDashboardView } from './views/admin/AdminDashboardView';
+import { AdminSalesView } from './views/admin/AdminSalesView';
 import { AdminCatalogView } from './views/admin/AdminCatalogView';
 import { AdminContentCMSView } from './views/admin/AdminContentCMSView';
 import { AdminAnnouncementsView } from './views/admin/AdminAnnouncementsView';
@@ -33,8 +34,12 @@ import { AdminLeadsView } from './views/admin/AdminLeadsView';
 
 // Páginas Centralizadas de Consultora
 import { ConsultantPortalView } from './views/consultant/ConsultantPortalView';
+import { ConsultantSalesView } from './views/consultant/ConsultantSalesView';
 import { ConsultantClientsView } from './views/consultant/ConsultantClientsView';
 import { ConsultantCatalogView } from './views/consultant/ConsultantCatalogView';
+
+const ADMIN_ROLES = ['DIRECTORA', 'LIDER_ZONA', 'SUPER_ADMIN'] as const;
+const CONSULTANT_ROLES = ['CONSULTORA', 'DIRECTORA', 'LIDER_ZONA', 'SUPER_ADMIN'] as const;
 
 export const AppLayout: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -60,17 +65,19 @@ export const AppLayout: React.FC = () => {
           <Route path="/recuperar-clave" element={<ResetPasswordView />} />
 
           {/* Rutas Administrativas Centralizadas */}
-          <Route path="/admin" element={<ProtectedRoute><AdminDashboardView /></ProtectedRoute>} />
-          <Route path="/admin/catalogo" element={<ProtectedRoute><AdminCatalogView /></ProtectedRoute>} />
-          <Route path="/admin/contenido" element={<ProtectedRoute><AdminContentCMSView /></ProtectedRoute>} />
-          <Route path="/admin/anuncios" element={<ProtectedRoute><AdminAnnouncementsView /></ProtectedRoute>} />
-          <Route path="/admin/usuarios" element={<ProtectedRoute><AdminUsersView /></ProtectedRoute>} />
-          <Route path="/admin/prospectos" element={<ProtectedRoute><AdminLeadsView /></ProtectedRoute>} />
+          <Route path="/admin" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><AdminDashboardView /></ProtectedRoute>} />
+          <Route path="/admin/ventas" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><AdminSalesView /></ProtectedRoute>} />
+          <Route path="/admin/catalogo" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><AdminCatalogView /></ProtectedRoute>} />
+          <Route path="/admin/contenido" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><AdminContentCMSView /></ProtectedRoute>} />
+          <Route path="/admin/anuncios" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><AdminAnnouncementsView /></ProtectedRoute>} />
+          <Route path="/admin/usuarios" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><AdminUsersView /></ProtectedRoute>} />
+          <Route path="/admin/prospectos" element={<ProtectedRoute allowedRoles={[...ADMIN_ROLES]}><AdminLeadsView /></ProtectedRoute>} />
 
           {/* Rutas de Consultora Centralizadas */}
-          <Route path="/consultora" element={<ProtectedRoute><ConsultantPortalView /></ProtectedRoute>} />
-          <Route path="/consultora/clientes" element={<ProtectedRoute><ConsultantClientsView /></ProtectedRoute>} />
-          <Route path="/consultora/catalogo" element={<ProtectedRoute><ConsultantCatalogView /></ProtectedRoute>} />
+          <Route path="/consultora" element={<ProtectedRoute allowedRoles={[...CONSULTANT_ROLES]}><ConsultantPortalView /></ProtectedRoute>} />
+          <Route path="/consultora/ventas" element={<ProtectedRoute allowedRoles={[...CONSULTANT_ROLES]}><ConsultantSalesView /></ProtectedRoute>} />
+          <Route path="/consultora/clientes" element={<ProtectedRoute allowedRoles={[...CONSULTANT_ROLES]}><ConsultantClientsView /></ProtectedRoute>} />
+          <Route path="/consultora/catalogo" element={<ProtectedRoute allowedRoles={[...CONSULTANT_ROLES]}><ConsultantCatalogView /></ProtectedRoute>} />
 
           <Route path="*" element={<NotFoundView />} />
         </Routes>
@@ -84,7 +91,9 @@ export const AppLayout: React.FC = () => {
 
 export default function App() {
   return (
-    <BrowserRouter>
+    // Flags de migración v7: eliminan los avisos de consola y dejan el
+    // enrutamiento listo para la siguiente versión de React Router.
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <ConfigProvider>
         <AuthProvider>
           <CartProvider>

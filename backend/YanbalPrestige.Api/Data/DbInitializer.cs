@@ -1,10 +1,15 @@
+using Microsoft.EntityFrameworkCore;
 using YanbalPrestige.Api.Common.Enums;
+using YanbalPrestige.Api.Common.Security;
 using YanbalPrestige.Api.Entities;
 
 namespace YanbalPrestige.Api.Data;
 
 public static class DbInitializer
 {
+    /// <summary>Contraseña de demostración para los usuarios sembrados.</summary>
+    public const string DemoPassword = "yanbal2026";
+
     public static async Task SeedAsync(AppDbContext context)
     {
         // 1. Semillero de Usuario Administrador (Directora Yuli)
@@ -15,7 +20,7 @@ public static class DbInitializer
                 Id = "usr-director-yuli",
                 FullName = "Yulieth Ospina (Directora)",
                 Email = "yulieth.directora@yanbalprestige.com",
-                PasswordHash = "AQAAAAEAACcQAAAAEJb...", // En producción se usa BCrypt / PBKDF2
+                PasswordHash = PasswordHasher.Hash(DemoPassword),
                 Role = UserRole.Director,
                 Phone = "+57 312 456 7890",
                 IsActive = true,
@@ -27,7 +32,7 @@ public static class DbInitializer
                 Id = "usr-consultant-carolina",
                 FullName = "Carolina Mejía (Consultora)",
                 Email = "carolina.mejia@yanbalprestige.com",
-                PasswordHash = "AQAAAAEAACcQAAAAEJb...",
+                PasswordHash = PasswordHasher.Hash(DemoPassword),
                 Role = UserRole.Consultant,
                 Phone = "+57 300 123 4567",
                 IsActive = true,
@@ -35,6 +40,22 @@ public static class DbInitializer
             };
 
             await context.Users.AddRangeAsync(director, consultant);
+        }
+        else
+        {
+            // Bases creadas antes del hardening: reemplaza hashes de relleno
+            // por PBKDF2 real para que el login de demostración funcione.
+            var legacyUsers = await context.Users
+                .Where(u =>
+                    u.Email == "yulieth.directora@yanbalprestige.com" ||
+                    u.Email == "carolina.mejia@yanbalprestige.com")
+                .ToListAsync();
+
+            foreach (var legacy in legacyUsers.Where(u => PasswordHasher.NeedsRehash(u.PasswordHash)))
+            {
+                legacy.PasswordHash = PasswordHasher.Hash(DemoPassword);
+                legacy.UpdatedAt = DateTime.UtcNow;
+            }
         }
 
         // 2. Semillero de Productos Iniciales si está vacío

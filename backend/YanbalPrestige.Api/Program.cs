@@ -39,22 +39,39 @@ builder.Services.AddHostedService<DatabaseBackupWorker>();
 builder.Services.Configure<TurnstileSettings>(builder.Configuration.GetSection(TurnstileSettings.SectionName));
 builder.Services.AddHttpClient<ITurnstileService, TurnstileService>();
 
-// 5. Caché de salida para alta concurrencia
+// 5. Caché de salida para alta concurrencia.
+// La política base NO cachea: solo los endpoints públicos marcados con
+// [OutputCache(PolicyName = "PublicCatalog")] se benefician de la RAM.
+// Antes la política global de 30 s podía servir respuestas autenticadas
+// (pedidos, CRM) a otro usuario.
 builder.Services.AddOutputCache(options =>
 {
-    options.AddBasePolicy(b => b.Expire(TimeSpan.FromSeconds(30)));
+    options.AddBasePolicy(b => b.NoCache());
+    options.AddPolicy("PublicCatalog", b => b
+        .Expire(TimeSpan.FromSeconds(30))
+        .SetVaryByQuery("*"));
 });
 
 // 6. Blindaje contra Fuerza Bruta y Bots (Regla 8)
+var globalPermitLimit = builder.Configuration.GetValue("RateLimiting:GlobalPermitLimit", 600);
+
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
     options.AddFixedWindowLimiter("ApiGlobalLimiter", opt =>
     {
-        opt.PermitLimit = 120;
+        // 600/min por IP: 120 era demasiado bajo para redes compartidas
+        // (NAT de operadores móviles y oficinas).
+        opt.PermitLimit = globalPermitLimit;
         opt.Window = TimeSpan.FromMinutes(1);
         opt.QueueLimit = 10;
         opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+    });
+    options.AddFixedWindowLimiter("AuthLimiter", opt =>
+    {
+        opt.PermitLimit = 10;
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.QueueLimit = 0;
     });
     options.AddFixedWindowLimiter("StrictLeadsLimiter", opt =>
     {
@@ -71,8 +88,19 @@ builder.Services.AddRateLimiter(options =>
 });
 
 // 7. Configuración de Base de Datos MySQL con EF Core
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
-    ?? "Server=localhost;Database=yanbal_prestige;User=root;Password=root;";
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    if (!builder.Environment.IsDevelopment())
+    {
+        throw new InvalidOperationException(
+            "Falta ConnectionStrings__DefaultConnection. Configúrela como variable de entorno antes de iniciar en producción.");
+    }
+
+    // Solo para desarrollo local; appsettings.Development.json está ignorado por git.
+    connectionString = "Server=localhost;Database=yanbal_prestige;User=root;Password=root;";
+}
 
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
@@ -154,12 +182,19 @@ builder.Services.AddAuthorization();
 var app = builder.Build();
 
 // 9. Middleware de Cabeceras de Seguridad Bancaria / OWASP
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+}
+
 app.Use(async (context, next) =>
 {
-    context.Response.Headers.Append("X-Frame-Options", "SAMEORIGIN");
+    context.Response.Headers.Append("X-Frame-Options", "DENY");
     context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
     context.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
-    context.Response.Headers.Append("X-XSS-Protection", "1; mode=block");
+    context.Response.Headers.Append("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+    context.Response.Headers.Append("Cross-Origin-Resource-Policy", "same-site");
+    context.Response.Headers.Append("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'; base-uri 'none'");
     await next();
 });
 
@@ -195,9 +230,12 @@ using (var scope = app.Services.CreateScope())
         db.Database.EnsureCreated();
         await DbInitializer.SeedAsync(db);
     }
-    catch
+    catch (Exception ex)
     {
-        // Si el motor MySQL no está corriendo localmente, se continúa sin bloquear el arranque
+        // En desarrollo se permite arrancar sin MySQL para trabajar el frontend.
+        // En producción un arranque sin base de datos debe fallar de inmediato.
+        Console.WriteLine($"[DB] No fue posible inicializar la base de datos: {ex.Message}");
+        if (!app.Environment.IsDevelopment()) throw;
     }
 }
 

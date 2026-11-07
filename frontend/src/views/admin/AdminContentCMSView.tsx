@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Layers, Sparkles, BookOpen, Video, Calendar, FileText, Lightbulb } from 'lucide-react';
+import { Layers, Sparkles, BookOpen, Video, Calendar, FileText, Lightbulb, Briefcase } from 'lucide-react';
 import { AdminNav } from '../../components/admin/AdminNav';
 import { CmsHeroSection } from '../../components/admin/cms/CmsHeroSection';
 import { CmsLinesSection } from '../../components/admin/cms/CmsLinesSection';
@@ -8,8 +8,9 @@ import { CmsVideosSection } from '../../components/admin/cms/CmsVideosSection';
 import { CmsEventsSection } from '../../components/admin/cms/CmsEventsSection';
 import { CmsTipsSection } from '../../components/admin/cms/CmsTipsSection';
 import { CmsAboutSection } from '../../components/admin/cms/CmsAboutSection';
+import { CmsJoinSection } from '../../components/admin/cms/CmsJoinSection';
 
-type CmsTab = 'hero' | 'lineas' | 'catalogo' | 'videos' | 'eventos' | 'tips' | 'quienes-somos';
+type CmsTab = 'hero' | 'lineas' | 'catalogo' | 'videos' | 'eventos' | 'tips' | 'quienes-somos' | 'unete';
 
 export const AdminContentCMSView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<CmsTab>('hero');
@@ -22,6 +23,7 @@ export const AdminContentCMSView: React.FC = () => {
     { id: 'eventos' as CmsTab, label: 'Eventos & Talleres', icon: Calendar },
     { id: 'tips' as CmsTab, label: 'Tips & Consejos', icon: Lightbulb },
     { id: 'quienes-somos' as CmsTab, label: 'Quiénes Somos', icon: FileText },
+    { id: 'unete' as CmsTab, label: 'Trabaja con Nosotros', icon: Briefcase },
   ];
 
   return (
@@ -40,7 +42,7 @@ export const AdminContentCMSView: React.FC = () => {
               Personalización de la Tienda & Secciones Públicas
             </h2>
             <p className="text-xs text-stone-500">
-              Modifica en tiempo real textos, carruseles, videos, eventos, tips y colecciones sin tocar código.
+              Modifica en tiempo real textos, carruseles, videos, eventos, tips y la sección de liderazgo sin tocar código.
             </p>
           </div>
         </div>
@@ -76,6 +78,7 @@ export const AdminContentCMSView: React.FC = () => {
           {activeTab === 'eventos' && <CmsEventsSection />}
           {activeTab === 'tips' && <CmsTipsSection />}
           {activeTab === 'quienes-somos' && <CmsAboutSection />}
+          {activeTab === 'unete' && <CmsJoinSection />}
         </div>
 
       </div>

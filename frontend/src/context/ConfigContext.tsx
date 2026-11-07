@@ -6,13 +6,18 @@ import type {
   PasswordResetRequest, 
   Product,
   AboutContentConfig,
+  JoinContentConfig,
   EventItem,
   HeroSlide,
   LineAccordionItem,
   DigitalCatalogConfig,
   VideoTipItem,
-  TipItem
+  TipItem,
+  Order,
+  PaymentStatus,
+  DeliveryStatus
 } from '../types';
+import { initialOrders } from '../data/ordersData';
 import { 
   productsData, 
   eventsData, 
@@ -31,6 +36,33 @@ const defaultAnnouncements: AnnouncementConfig = {
   campaignName: 'Campaña 05 - Esencia & Cuidado',
   campaignDiscountText: 'Hasta 35% OFF en Línea Sentiva y Fragancias Ccori',
   whatsAppWelcomeMsg: 'Hola Directora Yuli, vi el catálogo Yanbal Prestige y deseo una asesoría personalizada.',
+  updatedAt: new Date().toISOString(),
+};
+
+const defaultJoinContent: JoinContentConfig = {
+  tag: 'Carrera de Emprendimiento & Liderazgo',
+  title: 'Sé Parte de Nuestro Equipo',
+  subtitle: 'Elige la modalidad que mejor se adapte a tus metas: vende de forma libre con rentabilidad inmediata o construye una carrera corporativa liderando tu propio grupo de consultoras.',
+  consultantBadge: 'Emprendimiento Directo',
+  consultantTitle: 'Consultora de Belleza Independiente',
+  consultantDesc: 'Vende los productos emblemáticos de Yanbal con catálogo digital y físico. Administra tu tiempo y gana comisiones inmediatas.',
+  consultantBenefits: [
+    'Ganancias del 25% al 35% sobre cada referencia vendida.',
+    'Kit de inicio bonificado con productos de alta rotación.',
+    'Talleres gratuitos de automaquillaje y cuidado de la piel.',
+    'Tienda virtual propia y pedidos directos a tu WhatsApp.'
+  ],
+  consultantButtonText: 'Quiero ser Consultora de Belleza',
+  directorBadge: 'Carrera de Liderazgo',
+  directorTitle: 'Directora Independiente & Líder',
+  directorDesc: 'Forma, guía y empodera a tu propio equipo de consultoras. Escala a la cima corporativa con bonos de red e ingresos residuales.',
+  directorBenefits: [
+    'Bonificaciones por ventas grupales de toda tu red.',
+    'Viajes de convención nacionales e internacionales.',
+    'Auto 0 km en comodato y reconocimientos de prestigio.',
+    'Mentoría ejecutiva personalizada con la Directora Yuli Cortés.'
+  ],
+  directorButtonText: 'Postularme para Líder / Directora',
   updatedAt: new Date().toISOString(),
 };
 
@@ -107,6 +139,8 @@ interface ConfigContextType {
   setAnnouncements: (config: AnnouncementConfig) => void;
   aboutContent: AboutContentConfig;
   setAboutContent: (config: AboutContentConfig) => void;
+  joinContent: JoinContentConfig;
+  setJoinContent: (config: JoinContentConfig) => void;
   products: Product[];
   saveProduct: (product: Product) => void;
   toggleProductActive: (id: string) => void;
@@ -142,6 +176,11 @@ interface ConfigContextType {
   createResetRequest: (email: string, docId: string) => PasswordResetRequest;
   approveResetRequest: (reqId: string) => void;
   completeResetPassword: (reqId: string) => void;
+  orders: Order[];
+  saveOrder: (order: Order) => void;
+  updateOrderStatus: (orderId: string, paymentStatus?: PaymentStatus, deliveryStatus?: DeliveryStatus) => void;
+  assignOrder: (orderId: string, consultantId: string, consultantName: string) => void;
+  bulkAddProducts: (newProducts: Product[]) => void;
 }
 
 const ConfigContext = createContext<ConfigContextType | undefined>(undefined);
@@ -149,6 +188,7 @@ const ConfigContext = createContext<ConfigContextType | undefined>(undefined);
 export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { data: announcements, updateData: setAnnouncements } = useCacheSync<AnnouncementConfig>('announcements_v2', defaultAnnouncements);
   const { data: aboutContent, updateData: setAboutContent } = useCacheSync<AboutContentConfig>('about_content_v2', defaultAbout);
+  const { data: joinContent, updateData: setJoinContent } = useCacheSync<JoinContentConfig>('join_content_v1', defaultJoinContent);
   const { data: products, updateData: setProducts } = useCacheSync<Product[]>('products_v3', productsData);
   const { data: users, updateData: setUsers } = useCacheSync<AppUser[]>('users_v3', initialUsers);
   const { data: clients, updateData: setClients } = useCacheSync<ConsultantClient[]>('clients_v3', initialClients);
@@ -159,6 +199,9 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const { data: videoTips, updateData: setVideoTips } = useCacheSync<VideoTipItem[]>('video_tips_v1', videoTipsData);
   const { data: tips, updateData: setTips } = useCacheSync<TipItem[]>('tips_v1', tipsData);
   const { data: resetRequests, updateData: setResetRequests } = useCacheSync<PasswordResetRequest[]>('reset_requests_v3', []);
+  // v2: las fechas semilla ahora son relativas al día actual; al cambiar la
+  // clave, los navegadores con la caché vieja vuelven a sembrar datos.
+  const { data: orders, updateData: setOrders } = useCacheSync<Order[]>('orders_v2', initialOrders);
 
   // Sincronización en segundo plano con la API y Pulso Wake-Up para Render
   useEffect(() => {
@@ -195,6 +238,55 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
     });
   }, [setProducts, setTips, setEvents, setHeroSlides]);
+
+  // Carga Masiva Catálogo
+  const bulkAddProducts = (newProducts: Product[]) => {
+    setProducts((prev) => {
+      const existingCodes = new Set(prev.map((p) => p.code.trim().toUpperCase()));
+      const filtered = newProducts.filter((p) => !existingCodes.has(p.code.trim().toUpperCase()));
+      return [...filtered, ...prev];
+    });
+  };
+
+  // CRUD Pedidos & Ventas
+  const saveOrder = (order: Order) => {
+    setOrders((prev) => {
+      const exists = prev.some((o) => o.id === order.id);
+      return exists ? prev.map((o) => (o.id === order.id ? order : o)) : [order, ...prev];
+    });
+  };
+
+  const updateOrderStatus = (
+    orderId: string,
+    paymentStatus?: PaymentStatus,
+    deliveryStatus?: DeliveryStatus
+  ) => {
+    setOrders((prev) =>
+      prev.map((o) => {
+        if (o.id !== orderId) return o;
+        return {
+          ...o,
+          paymentStatus: paymentStatus ?? o.paymentStatus,
+          deliveryStatus: deliveryStatus ?? o.deliveryStatus,
+          updatedAt: new Date().toISOString(),
+        };
+      })
+    );
+  };
+
+  const assignOrder = (orderId: string, consultantId: string, consultantName: string) => {
+    setOrders((prev) =>
+      prev.map((o) => {
+        if (o.id !== orderId) return o;
+        return {
+          ...o,
+          consultantId,
+          consultantName,
+          updatedAt: new Date().toISOString(),
+        };
+      })
+    );
+  };
 
   // CRUD Catálogo
   const saveProduct = (prod: Product) => {
@@ -324,6 +416,7 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       value={{
         announcements, setAnnouncements,
         aboutContent, setAboutContent,
+        joinContent, setJoinContent,
         products, saveProduct, toggleProductActive, deleteProduct,
         users, saveUser, toggleUserActive, deleteUser,
         clients, addClient, updateClient, deleteClient,
@@ -334,6 +427,7 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         videoTips, saveVideoTip, toggleVideoTip, deleteVideoTip,
         tips, saveTip, toggleTip, deleteTip,
         resetRequests, createResetRequest, approveResetRequest, completeResetPassword,
+        orders, saveOrder, updateOrderStatus, assignOrder, bulkAddProducts,
       }}
     >
       {children}

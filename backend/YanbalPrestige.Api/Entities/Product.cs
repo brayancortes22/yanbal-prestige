@@ -48,6 +48,29 @@ public class Product
     [Column("tip_consultora")]
     public string ConsultantTip { get; set; } = string.Empty;
 
+    [Column("botanical_title")]
+    [MaxLength(100)]
+    public string BotanicalTitle { get; set; } = "Fórmula Botánica";
+
+    [Column("botanical_desc")]
+    [MaxLength(200)]
+    public string BotanicalDesc { get; set; } = "Ingredientes activos puros";
+
+    [Column("warranty_title")]
+    [MaxLength(100)]
+    public string WarrantyTitle { get; set; } = "100% Original Yanbal";
+
+    [Column("warranty_desc")]
+    [MaxLength(200)]
+    public string WarrantyDesc { get; set; } = "Garantía oficial de fábrica";
+
+    [Column("commitment_title")]
+    [MaxLength(100)]
+    public string CommitmentTitle { get; set; } = "Compromiso Yanbal Prestige";
+
+    [Column("commitment_text")]
+    public string CommitmentText { get; set; } = "Fórmulas no testeadas en animales (Cruelty-Free), hipoalergénicas y enriquecidas con extractos botánicos de la biodiversidad andina.";
+
     [Column("activo")]
     public bool IsActive { get; set; } = true;
 }

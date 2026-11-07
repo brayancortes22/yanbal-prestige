@@ -1,4 +1,6 @@
+using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
+using YanbalPrestige.Api.Common.Security;
 using YanbalPrestige.Api.Data;
 using YanbalPrestige.Api.DTOs;
 using YanbalPrestige.Api.Entities;
@@ -22,7 +24,8 @@ public class AuthService : IAuthService
         var user = await _context.Users.AsNoTracking()
             .FirstOrDefaultAsync(u => u.Email.ToLower() == request.Email.ToLower() && u.IsActive);
 
-        if (user == null)
+        // Respuesta genérica: no revela si el correo existe.
+        if (user == null || !PasswordHasher.Verify(request.Password, user.PasswordHash))
         {
             return new AuthResponseDto { Success = false, Message = "Credenciales incorrectas o usuario inactivo." };
         }
@@ -52,9 +55,13 @@ public class AuthService : IAuthService
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == email.ToLower() && u.IsActive);
         if (user == null) return null;
 
-        // Generar PIN aleatorio de 6 dígitos
-        var random = new Random();
-        var pin = random.Next(100000, 999999).ToString();
+        // PIN criptográfico de 6 dígitos y anulación de PINs anteriores.
+        var pin = RandomNumberGenerator.GetInt32(100_000, 1_000_000).ToString();
+
+        var previousPins = await _context.PasswordResetPins
+            .Where(p => p.UserId == user.Id && !p.IsUsed)
+            .ToListAsync();
+        previousPins.ForEach(p => p.IsUsed = true);
 
         var resetRecord = new PasswordResetPin
         {
@@ -82,9 +89,17 @@ public class AuthService : IAuthService
 
         if (pinRecord == null) return false;
 
+        if (!IsStrongEnough(request.NewPassword)) return false;
+
         pinRecord.IsUsed = true;
-        user.PasswordHash = $"hash_{request.NewPassword.GetHashCode()}";
+        user.PasswordHash = PasswordHasher.Hash(request.NewPassword);
         user.UpdatedAt = DateTime.UtcNow;
+
+        // Invalida cualquier otro PIN pendiente del mismo usuario.
+        var otherPins = await _context.PasswordResetPins
+            .Where(p => p.UserId == user.Id && !p.IsUsed)
+            .ToListAsync();
+        otherPins.ForEach(p => p.IsUsed = true);
 
         await _context.SaveChangesAsync();
         return true;
@@ -118,7 +133,12 @@ public class AuthService : IAuthService
                 Role = dto.Role,
                 Phone = dto.Phone,
                 IsActive = dto.IsActive,
-                PasswordHash = "default_pass_hash_123"
+                // Sin contraseña explícita la cuenta nace bloqueada:
+                // solo se activa con el flujo de recuperación por PIN.
+                PasswordHash = PasswordHasher.Hash(
+                    string.IsNullOrWhiteSpace(dto.Password)
+                        ? Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
+                        : dto.Password)
             };
             await _context.Users.AddAsync(user);
         }
@@ -130,6 +150,9 @@ public class AuthService : IAuthService
             user.Phone = dto.Phone;
             user.IsActive = dto.IsActive;
             user.UpdatedAt = DateTime.UtcNow;
+
+            if (!string.IsNullOrWhiteSpace(dto.Password))
+                user.PasswordHash = PasswordHasher.Hash(dto.Password);
         }
 
         await _context.SaveChangesAsync();
@@ -155,4 +178,10 @@ public class AuthService : IAuthService
         await _context.SaveChangesAsync();
         return true;
     }
+
+    /// <summary>Mínimo 8 caracteres con al menos una letra y un número.</summary>
+    private static bool IsStrongEnough(string password) =>
+        password.Length >= 8 &&
+        password.Any(char.IsLetter) &&
+        password.Any(char.IsDigit);
 }

@@ -19,7 +19,7 @@ export interface MediaItem {
   fileName?: string;
 }
 
-export type UserRole = 'SUPER_ADMIN' | 'DIRECTORA' | 'LIDER_ZONA' | 'CONSULTORA';
+export type UserRole = 'SUPER_ADMIN' | 'DIRECTORA' | 'LIDER_ZONA' | 'CONSULTORA' | 'CLIENTE';
 
 export interface AppUser {
   id: string;
@@ -62,6 +62,23 @@ export interface AboutContentConfig {
   adviceTag: string;
   adviceTitle: string;
   adviceDesc: string;
+  updatedAt: string;
+}
+
+export interface JoinContentConfig {
+  tag: string;
+  title: string;
+  subtitle: string;
+  consultantBadge: string;
+  consultantTitle: string;
+  consultantDesc: string;
+  consultantBenefits: string[];
+  consultantButtonText: string;
+  directorBadge: string;
+  directorTitle: string;
+  directorDesc: string;
+  directorBenefits: string[];
+  directorButtonText: string;
   updatedAt: string;
 }
 
@@ -144,7 +161,46 @@ export interface Product {
   badge?: string;
   usageSteps: string[];
   consultantTip: string;
+  botanicalTitle?: string;
+  botanicalDesc?: string;
+  warrantyTitle?: string;
+  warrantyDesc?: string;
+  commitmentTitle?: string;
+  commitmentText?: string;
   active: boolean; // Estado: true (En Catálogo) o false (Agotado/Pausado)
+}
+
+export type PaymentStatus = 'pendiente' | 'abono' | 'pagado';
+export type DeliveryStatus = 'preparacion' | 'camino' | 'entregado';
+export type OrderSource = 'web_catalogo' | 'venta_directa';
+
+export interface OrderItem {
+  productId: string;
+  productCode: string;
+  productName: string;
+  unitPrice: number;
+  quantity: number;
+  subtotal: number;
+}
+
+export interface Order {
+  id: string;
+  invoiceNumber: string; // ej. FAC-2026-001
+  clientId?: string;
+  clientName: string;
+  clientPhone: string;
+  clientCity: string;
+  clientAddress?: string;
+  consultantId: string;
+  consultantName: string;
+  items: OrderItem[];
+  totalAmount: number;
+  paymentStatus: PaymentStatus;
+  deliveryStatus: DeliveryStatus;
+  source: OrderSource;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface CartItem {

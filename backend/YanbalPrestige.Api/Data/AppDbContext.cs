@@ -19,6 +19,8 @@ public class AppDbContext : DbContext
     public DbSet<Tip> Tips => Set<Tip>();
     public DbSet<EventItem> Events => Set<EventItem>();
     public DbSet<LeadProspect> Leads => Set<LeadProspect>();
+    public DbSet<Order> Orders => Set<Order>();
+    public DbSet<OrderItem> OrderItems => Set<OrderItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -51,5 +53,37 @@ public class AppDbContext : DbContext
         // Índice para el listado público de consejos (activos y ordenados)
         modelBuilder.Entity<Tip>()
             .HasIndex(t => new { t.IsActive, t.Order });
+
+        // Índices de alto rendimiento para ventas y facturación
+        modelBuilder.Entity<Order>()
+            .HasIndex(o => o.InvoiceNumber)
+            .IsUnique();
+
+        modelBuilder.Entity<Order>()
+            .HasIndex(o => o.ConsultantId);
+
+        modelBuilder.Entity<Order>()
+            .HasIndex(o => o.CreatedAt);
+
+        modelBuilder.Entity<Order>()
+            .HasIndex(o => o.PaymentStatus);
+
+        modelBuilder.Entity<Order>()
+            .HasIndex(o => o.DeliveryStatus);
+
+        modelBuilder.Entity<Order>()
+            .HasIndex(o => o.IdempotencyKey);
+
+        modelBuilder.Entity<Order>()
+            .HasMany(o => o.Items)
+            .WithOne()
+            .HasForeignKey(i => i.OrderId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<OrderItem>()
+            .HasIndex(i => i.OrderId);
+
+        modelBuilder.Entity<OrderItem>()
+            .HasIndex(i => i.ProductId);
     }
 }
