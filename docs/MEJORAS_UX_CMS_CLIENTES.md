@@ -140,3 +140,20 @@ Comportamiento:
 - Al pasar a un rol que no es Consultora se limpia el líder asignado, para no
   dejar relaciones de equipo huérfanas.
 
+## 11. Cuenta de soporte del desarrollador
+
+- Se agregó el rol `Developer` (6) para el equipo que mantiene la plataforma.
+  Tiene control total para diagnosticar fallos, incluida la gestión de usuarios.
+- La cuenta **no se crea desde la interfaz**: se siembra al arrancar desde
+  `SUPPORT_EMAIL` y `SUPPORT_PASSWORD`. Si las variables faltan, no se crea
+  nada; la contraseña nunca vive en el repositorio.
+- El JWT incluye los roles `Developer` y `Director` para que todas las
+  comprobaciones existentes sigan funcionando sin duplicar permisos.
+- En el directorio aparece como “Desarrollador” y queda **protegida**: no se
+  puede editar, desactivar ni eliminar desde la pantalla (el backend responde
+  `400`). Para rotar la contraseña se cambia la variable de entorno y se
+  reinicia la API.
+- Migración: `database/006_support_developer_role.sql` amplía el `CHECK` de
+  roles en bases ya existentes.
+
+

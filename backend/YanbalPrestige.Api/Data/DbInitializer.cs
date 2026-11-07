@@ -195,6 +195,11 @@ public static class DbInitializer
             }
         }
 
+        // Cuenta de soporte del equipo desarrollador. Solo se crea o actualiza
+        // si SUPPORT_EMAIL y SUPPORT_PASSWORD están definidas en el entorno;
+        // nunca se guarda una contraseña fija en el repositorio.
+        await SeedSupportAccountAsync(context);
+
         // 2. Cartera de clientas de ejemplo (CRM por consultora).
         if (!context.ConsultantClients.Any())
         {
@@ -330,5 +335,57 @@ public static class DbInitializer
         }
 
         await context.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// Crea o actualiza la cuenta de soporte del equipo desarrollador a partir
+    /// de <c>SUPPORT_EMAIL</c> y <c>SUPPORT_PASSWORD</c>. Si las variables no
+    /// existen, no se crea nada. La contraseña se re-hashea solo cuando cambia,
+    /// de modo que rotarla en el entorno se aplica en el siguiente arranque.
+    /// </summary>
+    private static async Task SeedSupportAccountAsync(AppDbContext context)
+    {
+        var email = Environment.GetEnvironmentVariable("SUPPORT_EMAIL")?.Trim().ToLowerInvariant();
+        var password = Environment.GetEnvironmentVariable("SUPPORT_PASSWORD");
+
+        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+            return;
+
+        const string supportId = "usr-developer-bscl";
+        var user = await context.Users.FirstOrDefaultAsync(u => u.Email == email);
+
+        if (user == null)
+        {
+            user = new User
+            {
+                Id = supportId,
+                FullName = "Soporte BSCL (Desarrollador)",
+                Email = email,
+                Role = UserRole.Developer,
+                Phone = "",
+                DocumentId = "SOPORTE-BSCL",
+                Zone = "Soporte técnico",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            };
+            await context.Users.AddAsync(user);
+        }
+        else if (user.Role != UserRole.Developer && user.Id != supportId)
+        {
+            // No se secuestra una cuenta existente que use ese correo.
+            Console.WriteLine(
+                $"[SUPPORT] El correo {email} ya pertenece a otra cuenta; no se convirtió en soporte.");
+            return;
+        }
+
+        user.Role = UserRole.Developer;
+        user.IsActive = true;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        if (!PasswordHasher.Verify(password, user.PasswordHash))
+            user.PasswordHash = PasswordHasher.Hash(password);
+
+        await context.SaveChangesAsync();
+        Console.WriteLine($"[SUPPORT] Cuenta de soporte lista para {email}.");
     }
 }

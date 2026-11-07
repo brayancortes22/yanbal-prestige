@@ -25,6 +25,10 @@ Desarrollado bajo la metodología **Ciclo Completo bscl**, estándar estético *
   trabajadoras a cargo) y consultora. Asignación de equipo desde
   **Equipo & Roles**, con búsqueda por nombre o zona. El rol se puede cambiar
   **desde la misma tabla** tocando la etiqueta del rol.
+- **Cuenta de soporte del desarrollador**: rol `Developer` con control total,
+  creada desde variables de entorno (`SUPPORT_EMAIL` / `SUPPORT_PASSWORD`), sin
+  contraseña en el repositorio y protegida contra edición o borrado desde la
+  interfaz.
 - **Abonos editables**: cada pago guarda monto, método, nota y fecha; se puede
   corregir o eliminar, registrar devoluciones y el estado del pedido se
   recalcula solo. Las facturas canceladas quedan marcadas como **anuladas**.
@@ -351,6 +355,28 @@ $env:JWT_KEY = "cambiar-por-una-clave-larga-y-secreta-de-produccion"
 dotnet run
 # Swagger UI en: http://localhost:5000/swagger
 ```
+
+#### Cuenta de soporte del equipo desarrollador
+
+La API crea o actualiza al arrancar una cuenta con rol **Developer** (control
+total) cuando existen estas variables de entorno:
+
+```powershell
+$env:SUPPORT_EMAIL = "correo-del-equipo@dominio.com"
+$env:SUPPORT_PASSWORD = "contraseña-larga-y-única"
+```
+
+* No hay valores por defecto en el código: si las variables faltan, la cuenta
+  no se crea.
+* En local se leen de `~/.secrets/integraciones.env` mediante
+  `scripts/start-api-local.ps1`; en producción se configuran en el panel del
+  proveedor (Render).
+* Rotar la contraseña es cambiar `SUPPORT_PASSWORD` y reiniciar la API.
+* La cuenta aparece en **Equipo & Roles** como “Desarrollador”, pero no se
+  puede editar, desactivar ni eliminar desde la interfaz: se administra por
+  entorno. El backend rechaza esas operaciones con `400`.
+* Al iniciar sesión recibe además el rol `Director` en el JWT, por lo que
+  conserva todas las capacidades administrativas para diagnosticar fallos.
 
 ### 3. Base de Datos
 * Base nueva: el arranque crea el esquema desde las entidades EF Core.

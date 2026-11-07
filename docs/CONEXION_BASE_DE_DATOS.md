@@ -15,9 +15,10 @@
 | Conexión API → MySQL | **OK** | Login real emite JWT |
 | Frontend → API | **OK** | Badge “MySQL · API” |
 
-Conteo de la base al cierre: 6 usuarios, 4 clientas, 3 productos, 1 pedido y
-su pago registrado. Los seeds de demostración siguen existiendo, pero ahora
-viven en MySQL y se consultan por la API.
+Conteo de la base al cierre: 7 usuarios (incluida la cuenta de soporte del
+desarrollador), 4 clientas, 3 productos, 1 pedido y su pago registrado. Los
+seeds de demostración siguen existiendo, pero ahora viven en MySQL y se
+consultan por la API.
 
 ## 2. Esquema y credenciales
 
@@ -25,6 +26,9 @@ viven en MySQL y se consultan por la API.
 - Base: `yanbal_prestige` (MySQL 8.0, utf8mb4).
 - Usuario local: `bscl` (contraseña en `.secrets/integraciones.env`).
 - La cadena se inyecta por variable de entorno, nunca en `appsettings.json`.
+- Bases ya creadas: ejecutar también
+  `database/006_support_developer_role.sql`, que amplía el `CHECK` de roles
+  para admitir el rol 6 (`Developer`, soporte técnico).
 
 ```powershell
 $mysql = "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe"

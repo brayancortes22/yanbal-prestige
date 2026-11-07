@@ -52,6 +52,7 @@ export const UserTable: React.FC<UserTableProps> = ({
               const RoleIcon = config.Icon;
               const leader = allUsers.find((candidate) => candidate.id === user.leaderId);
               const teamSize = allUsers.filter((candidate) => candidate.leaderId === user.id).length;
+              const isProtected = user.role === 'SUPER_ADMIN';
 
               return (
                 <tr key={user.id} className="hover:bg-stone-50/50">
@@ -104,41 +105,63 @@ export const UserTable: React.FC<UserTableProps> = ({
                       <span className="text-[10px] font-semibold text-sky-700">
                         Apoyo administrativo
                       </span>
+                    ) : user.role === 'SUPER_ADMIN' ? (
+                      <span className="text-[10px] font-semibold text-indigo-700">
+                        Soporte técnico
+                      </span>
                     ) : (
                       <span className="text-[10px] text-stone-400">Toda la red</span>
                     )}
                   </td>
                   <td className="p-4 text-stone-600">{user.zone}</td>
                   <td className="p-4">
-                    <button
-                      onClick={() => onToggle(user.id)}
-                      className={`flex cursor-pointer items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold transition-all ${
-                        user.active
-                          ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                          : 'border-stone-200 bg-stone-100 text-stone-500 hover:bg-stone-200'
-                      }`}
-                      title="Alternar estado"
-                    >
-                      <Power className="h-3 w-3" />
-                      <span>{user.active ? 'Activa' : 'Inactiva'}</span>
-                    </button>
+                    {isProtected ? (
+                      <span
+                        className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[10px] font-bold text-indigo-700"
+                        title="Cuenta protegida: se administra desde variables de entorno"
+                      >
+                        <Power className="h-3 w-3" />
+                        <span>Fija</span>
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => onToggle(user.id)}
+                        className={`flex cursor-pointer items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold transition-all ${
+                          user.active
+                            ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                            : 'border-stone-200 bg-stone-100 text-stone-500 hover:bg-stone-200'
+                        }`}
+                        title="Alternar estado"
+                      >
+                        <Power className="h-3 w-3" />
+                        <span>{user.active ? 'Activa' : 'Inactiva'}</span>
+                      </button>
+                    )}
                   </td>
                   <td className="space-x-1 p-4 text-right">
-                    <button
-                      onClick={() => onEdit(user)}
-                      className="inline-flex cursor-pointer items-center gap-1 rounded-lg bg-stone-100 px-2.5 py-1 text-[11px] font-semibold text-stone-600 transition-colors hover:bg-brand-apricot-soft hover:text-brand-apricot-dark"
-                      title="Editar datos y equipo"
-                    >
-                      <Edit3 className="h-3.5 w-3.5" />
-                      <span>Editar</span>
-                    </button>
-                    <button
-                      onClick={() => onDelete(user)}
-                      className="cursor-pointer rounded-lg p-1.5 text-stone-300 transition-colors hover:bg-red-50 hover:text-red-500"
-                      title="Eliminar registro"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    {isProtected ? (
+                      <span className="text-[10px] font-semibold text-indigo-600">
+                        Cuenta de soporte
+                      </span>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => onEdit(user)}
+                          className="inline-flex cursor-pointer items-center gap-1 rounded-lg bg-stone-100 px-2.5 py-1 text-[11px] font-semibold text-stone-600 transition-colors hover:bg-brand-apricot-soft hover:text-brand-apricot-dark"
+                          title="Editar datos y equipo"
+                        >
+                          <Edit3 className="h-3.5 w-3.5" />
+                          <span>Editar</span>
+                        </button>
+                        <button
+                          onClick={() => onDelete(user)}
+                          className="cursor-pointer rounded-lg p-1.5 text-stone-300 transition-colors hover:bg-red-50 hover:text-red-500"
+                          title="Eliminar registro"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </>
+                    )}
                   </td>
                 </tr>
               );

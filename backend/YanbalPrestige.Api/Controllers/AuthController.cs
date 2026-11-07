@@ -116,8 +116,24 @@ public class AuthController : ControllerBase
         var existing = users.FirstOrDefault(u => u.Id == userDto.Id);
         var currentId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
+        if (userDto.Role == UserRole.Developer)
+        {
+            return BadRequest(new
+            {
+                message = "La cuenta de soporte técnico solo se crea desde variables de entorno."
+            });
+        }
+
         if (existing != null)
         {
+            if (existing.Role == UserRole.Developer)
+            {
+                return BadRequest(new
+                {
+                    message = "La cuenta de soporte técnico se administra desde variables de entorno y no puede editarse aquí."
+                });
+            }
+
             if (existing.Id == currentId &&
                 existing.Role == UserRole.Director &&
                 userDto.Role != UserRole.Director)
@@ -158,6 +174,14 @@ public class AuthController : ControllerBase
         var target = users.FirstOrDefault(u => u.Id == id);
         if (target == null) return NotFound();
 
+        if (target.Role == UserRole.Developer)
+        {
+            return BadRequest(new
+            {
+                message = "La cuenta de soporte técnico no puede desactivarse."
+            });
+        }
+
         var activeDirectors = users.Count(u => u.Role == UserRole.Director && u.IsActive);
         if (target.Role == UserRole.Director && target.IsActive && activeDirectors <= 1)
         {
@@ -183,6 +207,14 @@ public class AuthController : ControllerBase
         var users = await _authService.GetUsersAsync();
         var target = users.FirstOrDefault(u => u.Id == id);
         if (target == null) return NotFound();
+
+        if (target.Role == UserRole.Developer)
+        {
+            return BadRequest(new
+            {
+                message = "La cuenta de soporte técnico no puede eliminarse."
+            });
+        }
 
         var activeDirectors = users.Count(u => u.Role == UserRole.Director && u.IsActive);
         if (target.Role == UserRole.Director && target.IsActive && activeDirectors <= 1)
