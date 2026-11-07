@@ -7,7 +7,7 @@ public interface ICatalogService
 {
     Task<List<Product>> GetProductsAsync(ProductFilterDto filter);
     Task<Product?> GetProductByIdAsync(string id);
-    Task<Product> SaveProductAsync(Product product);
+    Task<Product> SaveProductAsync(ProductCreateUpdateDto dto);
     Task<bool> ToggleProductStatusAsync(string id);
     Task<bool> DeleteProductAsync(string id);
 }

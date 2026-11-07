@@ -1,17 +1,23 @@
 import React, { useMemo, useState } from 'react';
-import { Search, Plus } from 'lucide-react';
+import { Search, Plus, UploadCloud } from 'lucide-react';
 import { AdminNav } from '../../components/admin/AdminNav';
 import { ProductForm } from '../../components/admin/catalog/ProductForm';
 import { ProductTable } from '../../components/admin/catalog/ProductTable';
+import { CatalogImportModal } from '../../components/admin/CatalogImportModal';
 import { useConfig } from '../../context/ConfigContext';
+import { useToast } from '../../components/ui/ToastProvider';
+import { useConfirm } from '../../components/ui/ConfirmProvider';
 import type { Product } from '../../types';
 
 export const AdminCatalogView: React.FC = () => {
-  const { products, saveProduct, toggleProductActive, deleteProduct } = useConfig();
+  const { products, saveProduct, toggleProductActive, deleteProduct, bulkAddProducts } = useConfig();
+  const { notify } = useToast();
+  const confirm = useConfirm();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('todas');
   const [statusFilter, setStatusFilter] = useState<'todos' | 'activos' | 'pausados'>('todos');
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [suggestedCode, setSuggestedCode] = useState('REF-0000');
 
@@ -41,9 +47,47 @@ export const AdminCatalogView: React.FC = () => {
   };
 
   const handleSave = (product: Product) => {
+    const isNew = !editingProduct;
     saveProduct(product);
     setIsFormOpen(false);
     setEditingProduct(null);
+    notify(
+      isNew
+        ? `La referencia ${product.code} se agregó al catálogo.`
+        : `La referencia ${product.code} se actualizó.`
+    );
+  };
+
+  const handleToggle = async (id: string) => {
+    const product = products.find((item) => item.id === id);
+    const accepted = await confirm({
+      title: product?.active ? '¿Pausar esta referencia?' : '¿Reactivar esta referencia?',
+      message: product?.active
+        ? `"${product.name}" dejará de mostrarse en el catálogo público, pero se conserva en el sistema.`
+        : `"${product?.name || 'La referencia'}" volverá a mostrarse en el catálogo público.`,
+      confirmText: product?.active ? 'Sí, pausar' : 'Sí, reactivar',
+    });
+    if (!accepted) return;
+
+    toggleProductActive(id);
+    notify(
+      product?.active
+        ? `${product.name} quedó pausado en el catálogo.`
+        : `${product?.name || 'La referencia'} volvió a estar activo.`,
+      'info'
+    );
+  };
+
+  const handleDelete = async (id: string, name: string) => {
+    const accepted = await confirm({
+      title: '¿Dar de baja esta referencia?',
+      message: `"${name}" se eliminará del catálogo y también se borrarán sus fotos y videos del servidor. Los pedidos históricos conservan su nombre y precio.`,
+      confirmText: 'Sí, eliminar',
+      tone: 'danger',
+    });
+    if (!accepted) return;
+    deleteProduct(id);
+    notify(`"${name}" fue eliminado del catálogo.`, 'info');
   };
 
   return (
@@ -60,19 +104,28 @@ export const AdminCatalogView: React.FC = () => {
               Catálogo Centralizado de Productos & SKU
             </h2>
             <p className="text-xs text-stone-500">
-              Crea, edita datos, pausa o activa referencias oficiales Yanbal con control de
-              inventario.
+              Crea, edita datos, importa por CSV o activa referencias oficiales con control de inventario.
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={handleOpenCreate}
-            className="px-4 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer self-start md:self-auto"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Nuevo Producto</span>
-          </button>
+          <div className="flex items-center gap-2 self-start md:self-auto">
+            <button
+              type="button"
+              onClick={() => setIsImportOpen(true)}
+              className="px-3.5 py-2.5 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+            >
+              <UploadCloud className="w-4 h-4 text-orange-600" />
+              <span>Importar Catálogo CSV</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleOpenCreate}
+              className="px-4 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Nuevo Producto</span>
+            </button>
+          </div>
         </div>
 
         {isFormOpen && (
@@ -130,14 +183,16 @@ export const AdminCatalogView: React.FC = () => {
         <ProductTable
           products={filteredProducts}
           onEdit={handleOpenEdit}
-          onToggle={toggleProductActive}
-          onDelete={(id, name) => {
-            if (confirm(`¿Deseas dar de baja definitivamente "${name}" del catálogo?`)) {
-              deleteProduct(id);
-            }
-          }}
+          onToggle={handleToggle}
+          onDelete={handleDelete}
         />
       </div>
+
+      <CatalogImportModal
+        isOpen={isImportOpen}
+        onClose={() => setIsImportOpen(false)}
+        onImport={bulkAddProducts}
+      />
     </div>
   );
 };

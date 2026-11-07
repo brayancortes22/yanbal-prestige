@@ -1,25 +1,122 @@
-import React, { useState, useMemo } from 'react';
-import { KeyRound, CheckCircle, Copy, Plus, Trash2, Power, UserCheck, X, Edit3, MessageCircle, Search } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Plus, Search, Users, Crown, ShieldCheck, Sparkles, UserX } from 'lucide-react';
 import { AdminNav } from '../../components/admin/AdminNav';
+import { UserForm } from '../../components/admin/users/UserForm';
+import { UserTable } from '../../components/admin/users/UserTable';
+import { ResetRequestsPanel } from '../../components/admin/users/ResetRequestsPanel';
 import { useConfig } from '../../context/ConfigContext';
-import type { AppUser, UserRole } from '../../types';
+import { useToast } from '../../components/ui/ToastProvider';
+import { useConfirm } from '../../components/ui/ConfirmProvider';
+import type { AppUser, LeadProspect } from '../../types';
 
 export const AdminUsersView: React.FC = () => {
-  const { users, saveUser, toggleUserActive, deleteUser, resetRequests, approveResetRequest } = useConfig();
+  const {
+    users,
+    saveUser,
+    toggleUserActive,
+    deleteUser,
+    resetRequests,
+    approveResetRequest,
+  } = useConfig();
+
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('todos');
+  const [teamFilter, setTeamFilter] = useState<string>('todos');
   const [statusFilter, setStatusFilter] = useState<'todos' | 'activas' | 'inactivas'>('todos');
-
-  // Formulario Crear / Editar
   const [isEditing, setIsEditing] = useState(false);
-  const [editId, setEditId] = useState<string | null>(null);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [role, setRole] = useState<UserRole>('CONSULTORA');
-  const [documentId, setDocumentId] = useState('');
-  const [phone, setPhone] = useState('');
-  const [zone, setZone] = useState('Zona 12 - Suba');
+  const [editingUser, setEditingUser] = useState<AppUser | null>(null);
+  const [prefill, setPrefill] = useState<Partial<AppUser> | null>(null);
+  const formRef = useRef<HTMLDivElement | null>(null);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const handledLeadRef = useRef(false);
+  const { notify } = useToast();
+  const confirm = useConfirm();
+
+  const leaders = useMemo(() => users.filter((user) => user.role === 'LIDER_ZONA'), [users]);
+
+  const counts = useMemo(
+    () => ({
+      directoras: users.filter((user) => user.role === 'DIRECTORA').length,
+      asistentes: users.filter((user) => user.role === 'ASISTENTE').length,
+      lideres: users.filter((user) => user.role === 'LIDER_ZONA').length,
+      consultoras: users.filter((user) => user.role === 'CONSULTORA').length,
+      sinLider: users.filter((user) => user.role === 'CONSULTORA' && !user.leaderId).length,
+    }),
+    [users]
+  );
+
+  const filteredUsers = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    return users.filter((user) => {
+      const leader = users.find((candidate) => candidate.id === user.leaderId);
+      const matchSearch =
+        !term ||
+        user.name.toLowerCase().includes(term) ||
+        user.email.toLowerCase().includes(term) ||
+        user.documentId.includes(term) ||
+        user.zone.toLowerCase().includes(term) ||
+        (leader?.name.toLowerCase().includes(term) ?? false);
+      const matchRole = roleFilter === 'todos' || user.role === roleFilter;
+      const matchTeam =
+        teamFilter === 'todos' ||
+        (teamFilter === 'sin-lider' && user.role === 'CONSULTORA' && !user.leaderId) ||
+        user.leaderId === teamFilter ||
+        user.id === teamFilter;
+      const matchStatus =
+        statusFilter === 'todos' ||
+        (statusFilter === 'activas' && user.active) ||
+        (statusFilter === 'inactivas' && !user.active);
+      return matchSearch && matchRole && matchTeam && matchStatus;
+    });
+  }, [users, searchTerm, roleFilter, teamFilter, statusFilter]);
+
+  const handleSave = (user: AppUser) => {
+    const isNew = !editingUser;
+    saveUser(user);
+    setIsEditing(false);
+    setEditingUser(null);
+    notify(
+      isNew
+        ? `${user.name} se registró en la red${user.leaderId ? ' con líder asignado' : ' sin líder asignado'}.`
+        : `Los datos de ${user.name} se actualizaron.`
+    );
+  };
+
+  const handleToggle = async (id: string) => {
+    const user = users.find((candidate) => candidate.id === id);
+    const accepted = await confirm({
+      title: user?.active ? '¿Desactivar esta cuenta?' : '¿Reactivar esta cuenta?',
+      message: user?.active
+        ? `${user.name} no podrá iniciar sesión hasta que la reactives. Sus ventas e historial se conservan.`
+        : `${user?.name || 'La integrante'} podrá volver a iniciar sesión y operar en la red.`,
+      confirmText: user?.active ? 'Sí, desactivar' : 'Sí, reactivar',
+      tone: user?.active ? 'danger' : 'primary',
+    });
+    if (!accepted) return;
+
+    toggleUserActive(id);
+    notify(
+      user?.active
+        ? `${user.name} quedó inactiva y no podrá iniciar sesión.`
+        : `${user?.name || 'La integrante'} quedó activa de nuevo.`,
+      'info'
+    );
+  };
+
+  const handleDelete = async (user: AppUser) => {
+    const accepted = await confirm({
+      title: '¿Dar de baja a esta integrante?',
+      message: `${user.name} se eliminará del directorio. Sus ventas históricas se conservan, pero no podrá volver a ingresar.`,
+      confirmText: 'Sí, dar de baja',
+      tone: 'danger',
+    });
+    if (!accepted) return;
+    deleteUser(user.id);
+    notify(`${user.name} fue eliminada del directorio.`, 'info');
+  };
 
   const handleCopyPin = (pin: string, id: string) => {
     navigator.clipboard.writeText(pin);
@@ -27,376 +124,189 @@ export const AdminUsersView: React.FC = () => {
     setTimeout(() => setCopiedId(null), 2500);
   };
 
-  const handleOpenCreate = () => {
-    setEditId(null);
-    setName('');
-    setEmail('');
-    setDocumentId('');
-    setPhone('');
-    setRole('CONSULTORA');
-    setZone('Zona 12 - Bogotá');
+  const scrollToForm = () => {
+    window.setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 60);
+  };
+
+  const openCreate = () => {
+    setEditingUser(null);
+    setPrefill(null);
     setIsEditing(true);
+    scrollToForm();
   };
 
-  const handleOpenEdit = (u: AppUser) => {
-    setEditId(u.id);
-    setName(u.name);
-    setEmail(u.email);
-    setDocumentId(u.documentId);
-    setPhone(u.phone);
-    setRole(u.role);
-    setZone(u.zone);
+  const openEdit = (user: AppUser) => {
+    setEditingUser(user);
+    setPrefill(null);
     setIsEditing(true);
+    scrollToForm();
   };
 
-  const handleSaveUser = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name || !email || !documentId) return;
+  // Alta rápida desde un prospecto de “Trabaja con nosotros”.
+  useEffect(() => {
+    const lead = (location.state as { lead?: LeadProspect } | null)?.lead;
+    if (!lead || handledLeadRef.current) return;
 
-    const existing = editId ? users.find((u) => u.id === editId) : null;
-    const targetUser: AppUser = {
-      id: editId || `usr-${Date.now()}`,
-      name,
-      email,
-      role,
-      documentId,
-      phone,
-      zone,
-      active: existing ? existing.active : true,
-    };
-
-    saveUser(targetUser);
-    setIsEditing(false);
-  };
-
-  const filteredUsers = useMemo(() => {
-    return users.filter((u) => {
-      const matchSearch =
-        u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        u.documentId.includes(searchTerm) ||
-        u.zone.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchRole = roleFilter === 'todos' || u.role === roleFilter;
-      const matchStatus =
-        statusFilter === 'todos' ||
-        (statusFilter === 'activas' && u.active) ||
-        (statusFilter === 'inactivas' && !u.active);
-      return matchSearch && matchRole && matchStatus;
+    handledLeadRef.current = true;
+    setEditingUser(null);
+    setPrefill({
+      name: lead.fullName,
+      email: lead.email || '',
+      phone: lead.phone,
+      zone: [lead.city, lead.department].filter(Boolean).join(' - '),
+      role: lead.roleInterest === 'directora' ? 'LIDER_ZONA' : 'CONSULTORA',
     });
-  }, [users, searchTerm, roleFilter, statusFilter]);
+    setIsEditing(true);
+    scrollToForm();
+    navigate(location.pathname, { replace: true });
+  }, [location, navigate]);
 
   return (
-    <div className="bg-brand-cream min-h-[85vh] animate-fadeIn">
+    <div className="min-h-[85vh] animate-fadeIn bg-brand-cream">
       <AdminNav />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        
-        {/* Cabecera */}
-        <div className="bg-white p-6 rounded-3xl border border-stone-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
+        <div className="flex flex-col justify-between gap-4 rounded-3xl border border-stone-200/80 bg-white p-6 shadow-xs md:flex-row md:items-center">
           <div>
-            <span className="text-[10px] font-bold tracking-widest uppercase text-orange-600 block">
-              Control de Accesos & Seguridad
+            <span className="block text-[10px] font-bold uppercase tracking-widest text-brand-apricot">
+              Control de accesos & jerarquía de la red
             </span>
             <h2 className="font-editorial text-2xl font-bold text-stone-900">
-              Equipo de la Red, Roles & Desbloqueo OTP
+              Equipo, roles y equipos de líderes
             </h2>
-            <p className="text-xs text-stone-500">
-              Crea, edita datos, activa o desactiva consultoras. Autoriza cambios de clave en 1 clic sin correos SMTP.
+            <p className="max-w-2xl text-xs text-stone-500">
+              Define quién administra, quién lidera un equipo y qué consultoras reportan a cada
+              líder. Una consultora sin líder queda marcada para asignación.
             </p>
           </div>
-
           <button
-            onClick={handleOpenCreate}
-            className="px-4 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer self-start md:self-auto"
+            onClick={openCreate}
+            className="flex cursor-pointer items-center gap-1.5 self-start rounded-xl bg-brand-apricot px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition-all hover:bg-brand-apricot-dark md:self-auto"
           >
-            <Plus className="w-4 h-4" />
-            <span>Nueva Consultora</span>
+            <Plus className="h-4 w-4" />
+            <span>Nueva integrante</span>
           </button>
         </div>
 
-        {/* Formulario Crear / Editar */}
-        {isEditing && (
-          <form onSubmit={handleSaveUser} className="bg-white p-6 rounded-3xl border border-orange-200 shadow-sm space-y-4">
-            <div className="flex items-center justify-between border-b border-stone-100 pb-2">
-              <h3 className="font-editorial text-base font-bold text-stone-900">
-                {editId ? 'Editar Integrante de la Red' : 'Registrar Nueva Consultora o Líder'}
-              </h3>
-              <button type="button" onClick={() => setIsEditing(false)} className="text-stone-400 hover:text-stone-700 cursor-pointer">
-                <X className="w-4 h-4" />
-              </button>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+          {[
+            { label: 'Administradoras', value: counts.directoras, Icon: Crown, tone: 'text-brand-apricot-dark bg-brand-apricot-soft' },
+            { label: 'Asistentes', value: counts.asistentes, Icon: ShieldCheck, tone: 'text-sky-700 bg-sky-50' },
+            { label: 'Líderes de zona', value: counts.lideres, Icon: ShieldCheck, tone: 'text-[#8A6D12] bg-[#FBF3D9]' },
+            { label: 'Consultoras', value: counts.consultoras, Icon: Sparkles, tone: 'text-emerald-700 bg-emerald-50' },
+            { label: 'Sin líder', value: counts.sinLider, Icon: UserX, tone: 'text-stone-600 bg-stone-100' },
+          ].map(({ label, value, Icon, tone }) => (
+            <div
+              key={label}
+              className="flex items-center gap-3 rounded-2xl border border-stone-200/80 bg-white p-4 shadow-xs"
+            >
+              <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${tone}`}>
+                <Icon className="h-5 w-5" />
+              </span>
+              <span>
+                <strong className="block font-editorial text-xl text-stone-900">{value}</strong>
+                <span className="text-[10px] text-stone-500">{label}</span>
+              </span>
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              <input
-                type="text"
-                required
-                placeholder="Nombre completo"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="p-2.5 text-xs rounded-xl border border-stone-200 bg-stone-50/50"
-              />
-              <input
-                type="email"
-                required
-                placeholder="Correo electrónico"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="p-2.5 text-xs rounded-xl border border-stone-200 bg-stone-50/50"
-              />
-              <input
-                type="text"
-                required
-                placeholder="Cédula de Ciudadanía"
-                value={documentId}
-                onChange={(e) => setDocumentId(e.target.value)}
-                className="p-2.5 text-xs rounded-xl border border-stone-200 bg-stone-50/50 font-mono"
-              />
-              <input
-                type="text"
-                placeholder="WhatsApp (ej: +57 315...)"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="p-2.5 text-xs rounded-xl border border-stone-200 bg-stone-50/50"
-              />
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value as UserRole)}
-                className="p-2.5 text-xs rounded-xl border border-stone-200 bg-stone-50/50 font-semibold"
-              >
-                <option value="CONSULTORA">Consultora de Belleza</option>
-                <option value="LIDER_ZONA">Líder de Zona</option>
-                <option value="DIRECTORA">Directora Independiente</option>
-              </select>
-              <input
-                type="text"
-                placeholder="Zona / Municipio"
-                value={zone}
-                onChange={(e) => setZone(e.target.value)}
-                className="p-2.5 text-xs rounded-xl border border-stone-200 bg-stone-50/50"
-              />
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setIsEditing(false)}
-                className="px-4 py-2 rounded-xl border border-stone-200 text-xs font-semibold text-stone-600 cursor-pointer"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                className="px-5 py-2 rounded-xl bg-stone-900 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm cursor-pointer"
-              >
-                <UserCheck className="w-3.5 h-3.5" />
-                <span>{editId ? 'Guardar Cambios' : 'Registrar en la Red'}</span>
-              </button>
-            </div>
-          </form>
-        )}
-
-        {/* Sección de Seguridad: Solicitudes de Desbloqueo OTP con WhatsApp */}
-        <div className="bg-white p-6 rounded-3xl border border-amber-200 shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-stone-100 pb-3">
-            <h3 className="font-editorial text-lg font-bold text-stone-900 flex items-center gap-2">
-              <KeyRound className="w-5 h-5 text-amber-600" />
-              <span>Solicitudes de Cambio de Contraseña (PIN Temporal de 6 Dígitos)</span>
-            </h3>
-            <span className="text-xs text-amber-700 font-semibold bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
-              {resetRequests.filter((r) => r.status === 'pending').length} pendientes de aprobación
-            </span>
-          </div>
-
-          {resetRequests.length === 0 ? (
-            <p className="text-xs text-stone-400 py-4 text-center">
-              No hay solicitudes de recuperación de clave pendientes en este momento.
-            </p>
-          ) : (
-            <div className="divide-y divide-stone-100">
-              {resetRequests.map((req) => {
-                const targetUser = users.find((u) => u.email.toLowerCase() === req.userEmail.toLowerCase());
-                const cleanPhone = (targetUser?.phone || '').replace(/[^0-9]/g, '');
-                const wpMsg = encodeURIComponent(
-                  `Hola ${req.userName}! Soy la Directora Yuli. Tu solicitud de cambio de clave fue aprobada. Tu PIN de seguridad es: ${req.pinCode}. Ingrésalo en la pantalla de recuperación para crear tu nueva contraseña.`
-                );
-
-                return (
-                  <div key={req.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-xs text-stone-900">{req.userName}</span>
-                        <span className="text-[10px] text-stone-400 font-mono">({req.userEmail})</span>
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                          req.status === 'approved'
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            : req.status === 'completed'
-                            ? 'bg-stone-100 text-stone-500'
-                            : 'bg-amber-50 text-amber-700 border border-amber-200'
-                        }`}>
-                          {req.status === 'approved' ? 'Aprobado' : req.status === 'completed' ? 'Completado' : 'Esperando Autorización'}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-stone-500 mt-0.5">
-                        Cédula ingresada: <strong>{req.documentId}</strong> • PIN de seguridad: <strong className="font-mono text-amber-600 text-xs">{req.pinCode}</strong>
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      {req.status === 'pending' && (
-                        <button
-                          onClick={() => approveResetRequest(req.id)}
-                          className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1 shadow-xs cursor-pointer"
-                        >
-                          <CheckCircle className="w-3.5 h-3.5" />
-                          <span>Aprobar en 1 Clic</span>
-                        </button>
-                      )}
-
-                      <button
-                        onClick={() => handleCopyPin(req.pinCode, req.id)}
-                        className="px-3 py-1.5 rounded-xl border border-stone-200 hover:bg-stone-50 text-xs font-semibold text-stone-600 flex items-center gap-1 cursor-pointer"
-                      >
-                        <Copy className="w-3.5 h-3.5" />
-                        <span>{copiedId === req.id ? '¡Copiado!' : 'Copiar PIN'}</span>
-                      </button>
-
-                      {cleanPhone && (
-                        <a
-                          href={`https://wa.me/${cleanPhone}?text=${wpMsg}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 text-xs font-semibold flex items-center gap-1 cursor-pointer"
-                        >
-                          <MessageCircle className="w-3.5 h-3.5" />
-                          <span>WhatsApp</span>
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          ))}
         </div>
 
-        {/* Buscador y Filtros de Usuarios */}
-        <div className="bg-white p-4 rounded-2xl border border-stone-200/80 shadow-xs flex flex-col md:flex-row gap-3 items-center justify-between">
+        {isEditing && (
+          <div ref={formRef} className="scroll-mt-24">
+            <UserForm
+              key={`${editingUser?.id ?? 'new'}-${prefill?.email ?? ''}`}
+              editingUser={editingUser}
+              prefill={prefill}
+              users={users}
+              onSave={handleSave}
+              onCancel={() => {
+                setIsEditing(false);
+                setEditingUser(null);
+                setPrefill(null);
+              }}
+            />
+          </div>
+        )}
+
+        <ResetRequestsPanel
+          requests={resetRequests}
+          users={users}
+          copiedId={copiedId}
+          onApprove={approveResetRequest}
+          onCopyPin={handleCopyPin}
+        />
+
+        <div className="flex flex-col items-center justify-between gap-3 rounded-2xl border border-stone-200/80 bg-white p-4 shadow-xs md:flex-row">
           <div className="relative w-full md:w-72">
-            <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-3" />
+            <Search className="absolute left-3.5 top-3 h-4 w-4 text-stone-400" />
             <input
               type="text"
-              placeholder="Buscar por nombre, correo, cédula o zona..."
+              placeholder="Buscar nombre, correo, cédula, zona o líder..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 text-xs rounded-xl border border-stone-200 bg-stone-50/50"
+              onChange={(event) => setSearchTerm(event.target.value)}
+              className="w-full rounded-xl border border-stone-200 bg-stone-50/50 py-2 pl-10 pr-4 text-xs"
             />
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+          <div className="flex w-full flex-wrap items-center gap-2 md:w-auto">
             <select
               value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value)}
-              className="p-2 text-xs rounded-xl border border-stone-200 bg-stone-50/50 text-stone-700 font-medium"
+              onChange={(event) => setRoleFilter(event.target.value)}
+              className="rounded-xl border border-stone-200 bg-stone-50/50 p-2 text-xs font-medium text-stone-700"
             >
-              <option value="todos">Todos los Roles</option>
-              <option value="DIRECTORA">Directora</option>
-              <option value="LIDER_ZONA">Líder de Zona</option>
-              <option value="CONSULTORA">Consultora de Belleza</option>
+              <option value="todos">Todos los roles</option>
+              <option value="DIRECTORA">Administradora</option>
+              <option value="ASISTENTE">Asistente administrativa</option>
+              <option value="LIDER_ZONA">Líder de zona</option>
+              <option value="CONSULTORA">Consultora</option>
+            </select>
+
+            <select
+              value={teamFilter}
+              onChange={(event) => setTeamFilter(event.target.value)}
+              className="rounded-xl border border-stone-200 bg-stone-50/50 p-2 text-xs font-medium text-stone-700"
+            >
+              <option value="todos">Todos los equipos</option>
+              <option value="sin-lider">Sin líder asignado</option>
+              {leaders.map((leader) => (
+                <option key={leader.id} value={leader.id}>
+                  Equipo de {leader.name}
+                </option>
+              ))}
             </select>
 
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as any)}
-              className="p-2 text-xs rounded-xl border border-stone-200 bg-stone-50/50 text-stone-700 font-medium"
+              onChange={(event) =>
+                setStatusFilter(event.target.value as 'todos' | 'activas' | 'inactivas')
+              }
+              className="rounded-xl border border-stone-200 bg-stone-50/50 p-2 text-xs font-medium text-stone-700"
             >
-              <option value="todos">Todos los Estados</option>
-              <option value="activas">Solo Activas</option>
-              <option value="inactivas">Solo Inactivas</option>
+              <option value="todos">Todos los estados</option>
+              <option value="activas">Solo activas</option>
+              <option value="inactivas">Solo inactivas</option>
             </select>
           </div>
         </div>
 
-        {/* Tabla de Directorio del Equipo de Ventas */}
-        <div className="bg-white rounded-3xl border border-stone-200/80 shadow-xs overflow-hidden">
-          <div className="p-4 border-b border-stone-100 font-editorial text-base font-bold text-stone-900 flex items-center justify-between">
-            <span>Directorio del Equipo de Ventas</span>
-            <span className="text-xs font-normal text-stone-500 font-sans">
-              {filteredUsers.length} integrantes registradas
+        <div className="overflow-hidden rounded-3xl border border-stone-200/80 bg-white shadow-xs">
+          <div className="flex items-center justify-between border-b border-stone-100 p-4 font-editorial text-base font-bold text-stone-900">
+            <span>Directorio de la red</span>
+            <span className="font-sans text-xs font-normal text-stone-500">
+              <Users className="mr-1 inline h-3.5 w-3.5" />
+              {filteredUsers.length} integrantes
             </span>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-stone-50 text-stone-500 font-semibold border-b border-stone-100">
-                <tr>
-                  <th className="p-4">Nombre</th>
-                  <th className="p-4">Correo</th>
-                  <th className="p-4">Rol</th>
-                  <th className="p-4">Cédula</th>
-                  <th className="p-4">Zona / Municipio</th>
-                  <th className="p-4">Estado</th>
-                  <th className="p-4 text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-stone-100">
-                {filteredUsers.map((u) => (
-                  <tr key={u.id} className="hover:bg-stone-50/50">
-                    <td className="p-4 font-semibold text-stone-900">{u.name}</td>
-                    <td className="p-4 text-stone-600 font-mono text-[11px]">{u.email}</td>
-                    <td className="p-4">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        u.role === 'DIRECTORA'
-                          ? 'bg-orange-50 text-orange-700 border border-orange-200'
-                          : u.role === 'LIDER_ZONA'
-                          ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                          : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                      }`}>
-                        {u.role}
-                      </span>
-                    </td>
-                    <td className="p-4 text-stone-600 font-mono">{u.documentId}</td>
-                    <td className="p-4 text-stone-600">{u.zone}</td>
-                    <td className="p-4">
-                      <button
-                        onClick={() => toggleUserActive(u.id)}
-                        className={`px-2.5 py-1 rounded-full text-[10px] font-bold border flex items-center gap-1 cursor-pointer transition-all ${
-                          u.active
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                            : 'bg-stone-100 text-stone-500 border-stone-200 hover:bg-stone-200'
-                        }`}
-                        title="Alternar estado: Activa / Inactiva"
-                      >
-                        <Power className="w-3 h-3" />
-                        <span>{u.active ? 'Activa' : 'Inactiva'}</span>
-                      </button>
-                    </td>
-                    <td className="p-4 text-right space-x-1">
-                      <button
-                        onClick={() => handleOpenEdit(u)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-orange-50 text-stone-600 hover:text-orange-700 font-semibold text-[11px] transition-colors cursor-pointer"
-                        title="Editar datos"
-                      >
-                        <Edit3 className="w-3.5 h-3.5" />
-                        <span>Editar</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (confirm(`¿Deseas dar de baja a ${u.name}?`)) {
-                            deleteUser(u.id);
-                          }
-                        }}
-                        className="p-1.5 text-stone-300 hover:text-red-500 rounded-lg hover:bg-red-50 cursor-pointer transition-colors"
-                        title="Eliminar registro"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <UserTable
+            users={filteredUsers}
+            allUsers={users}
+            onEdit={openEdit}
+            onToggle={handleToggle}
+            onDelete={handleDelete}
+          />
         </div>
-
       </div>
     </div>
   );

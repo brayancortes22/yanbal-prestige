@@ -33,8 +33,24 @@ public class User
     [Column("telefono")]
     public string Phone { get; set; } = string.Empty;
 
+    [MaxLength(30)]
+    [Column("documento")]
+    public string DocumentId { get; set; } = string.Empty;
+
+    [MaxLength(100)]
+    [Column("zona")]
+    public string Zone { get; set; } = string.Empty;
+
     [Column("activo")]
     public bool IsActive { get; set; } = true;
+
+    /// <summary>
+    /// Líder de zona al que reporta una consultora. Es una auto-relación
+    /// con `usuarios.id`; la administradora lo asigna desde el panel.
+    /// </summary>
+    [MaxLength(50)]
+    [Column("lider_id")]
+    public string? LeaderId { get; set; }
 
     [Column("creado_en")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

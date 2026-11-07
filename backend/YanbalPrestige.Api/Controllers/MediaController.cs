@@ -24,7 +24,7 @@ public class MediaController : ControllerBase
     [HttpPost("upload")]
     [EnableRateLimiting("StrictUploadLimiter")]
     [RequestSizeLimit(167_772_160)] // 160 MB: videos de hasta 150 MB + formulario
-    [RequestFormLimits(MultipartBodyLengthLimit = 167_772_160)]
+    [RequestFormLimits(MultipartBodyLengthLimit = 167_772_160, MemoryBufferThreshold = 4_194_304)]
     public async Task<IActionResult> Upload([FromForm] IFormFile file, [FromForm] string subFolder = "general")
     {
         try

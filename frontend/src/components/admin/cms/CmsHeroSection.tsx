@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Edit3, Power, Check, X } from 'lucide-react';
+import { Plus, Trash2, Edit3, Power, Check, X, AlertTriangle } from 'lucide-react';
 import { useConfig } from '../../../context/ConfigContext';
-import type { HeroSlide } from '../../../types';
+import type { HeroSlide, MediaItem } from '../../../types';
+import { MediaUploader } from '../../media/MediaUploader';
 
 export const CmsHeroSection: React.FC = () => {
   const { heroSlides, saveHeroSlide, toggleHeroSlide, deleteHeroSlide } = useConfig();
@@ -12,6 +13,8 @@ export const CmsHeroSection: React.FC = () => {
   const [desc, setDesc] = useState('');
   const [badge, setBadge] = useState('Lanzamiento Exclusivo');
   const [image, setImage] = useState('');
+  const [imageMedia, setImageMedia] = useState<MediaItem[]>([]);
+  const [error, setError] = useState('');
 
   const handleOpenCreate = () => {
     setEditId(null);
@@ -20,6 +23,8 @@ export const CmsHeroSection: React.FC = () => {
     setDesc('Descubre la alta cosmética botánica con ingredientes naturales.');
     setBadge('Novedad');
     setImage('https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?auto=format&fit=crop&w=1200&q=80');
+    setImageMedia([]);
+    setError('');
     setIsEditing(true);
   };
 
@@ -30,12 +35,20 @@ export const CmsHeroSection: React.FC = () => {
     setDesc(s.desc);
     setBadge(s.badge);
     setImage(s.image);
+    setImageMedia(
+      s.image ? [{ id: 'cover', url: s.image, type: 'image', alt: s.title }] : []
+    );
+    setError('');
     setIsEditing(true);
   };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !subtitle) return;
+    if (!image) {
+      setError('Sube o elige una imagen de fondo para el banner.');
+      return;
+    }
     saveHeroSlide({
       id: editId || `slide-${Date.now()}`,
       title,
@@ -99,15 +112,30 @@ export const CmsHeroSection: React.FC = () => {
               onChange={(e) => setBadge(e.target.value)}
               className="p-2.5 text-xs rounded-xl border border-stone-200 bg-stone-50/50"
             />
-            <input
-              type="url"
-              required
-              placeholder="URL de imagen de fondo"
-              value={image}
-              onChange={(e) => setImage(e.target.value)}
-              className="p-2.5 text-xs rounded-xl border border-stone-200 bg-stone-50/50"
+          </div>
+
+          <div className="p-3 rounded-2xl border border-stone-200 bg-stone-50/40">
+            <MediaUploader
+              media={imageMedia}
+              onChange={(next) => {
+                setImageMedia(next);
+                setImage(next[0]?.url || '');
+              }}
+              accept="image"
+              maxFiles={1}
+              subFolder="hero"
+              label="Imagen de fondo del banner"
+              hint="Sube una foto horizontal (1600 × 900 px ideal) o pega un enlace."
+              showAlt={false}
             />
           </div>
+
+          {error && (
+            <div className="flex items-start gap-2 p-2.5 rounded-xl bg-red-50 border border-red-200 text-[11px] text-red-700">
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+              <span>{error}</span>
+            </div>
+          )}
 
           <textarea
             rows={2}

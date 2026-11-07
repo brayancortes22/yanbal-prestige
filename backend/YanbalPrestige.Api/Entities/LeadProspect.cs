@@ -12,19 +12,35 @@ public class LeadProspect
     public string Id { get; set; } = Guid.NewGuid().ToString();
 
     [Column("nombre_completo")]
-    [MaxLength(150)]
+    [Required, MaxLength(150)]
     public string FullName { get; set; } = string.Empty;
 
     [Column("telefono_whatsapp")]
-    [MaxLength(50)]
+    [Required, MaxLength(30), RegularExpression(@"^[0-9+\s()-]{7,30}$")]
     public string Phone { get; set; } = string.Empty;
 
     [Column("ciudad")]
-    [MaxLength(100)]
+    [Required, MaxLength(100)]
     public string City { get; set; } = string.Empty;
 
+    [Column("correo")]
+    [MaxLength(150)]
+    public string Email { get; set; } = string.Empty;
+
+    [Column("departamento")]
+    [MaxLength(100)]
+    public string Department { get; set; } = string.Empty;
+
+    [Column("direccion")]
+    [MaxLength(200)]
+    public string Address { get; set; } = string.Empty;
+
+    [Column("experiencia")]
+    [MaxLength(500)]
+    public string Experience { get; set; } = string.Empty;
+
     [Column("rol_interes")]
-    [MaxLength(50)]
+    [Required, MaxLength(50)]
     public string RoleInterest { get; set; } = "consultora";
 
     [Column("acepto_habeas_data")]

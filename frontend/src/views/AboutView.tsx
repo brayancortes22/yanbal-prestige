@@ -76,6 +76,77 @@ export const AboutView: React.FC = () => {
           </div>
         </div>
 
+        {/* Línea de tiempo */}
+        <section className="space-y-6">
+          <div className="text-center space-y-2">
+            <span className="text-xs font-bold tracking-widest uppercase text-orange-600">
+              Nuestra trayectoria
+            </span>
+            <h2 className="font-editorial text-2xl sm:text-3xl font-bold text-stone-900">
+              Una red que crece contigo
+            </h2>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              { year: '2018', title: 'Nace la red', text: 'Un grupo pequeño de consultoras decide acompañar a sus clientas con asesoría real, no solo con un catálogo.' },
+              { year: '2021', title: 'Formación continua', text: 'Creamos rutinas de capacitación en dermocosmética, ventas y liderazgo para cada nueva integrante.' },
+              { year: '2024', title: 'Liderazgo de zona', text: 'Las líderes acompañan equipos completos, revisan metas y comparten buenas prácticas cada campaña.' },
+              { year: '2026', title: 'Comunidad digital', text: 'Digitalizamos catálogo, pedidos, abonos y facturas para que comprar y vender sea más claro y rápido.' },
+            ].map((item) => (
+              <div key={item.year} className="card-luxury rounded-3xl p-5 space-y-2">
+                <span className="font-mono text-xs font-bold text-orange-600">{item.year}</span>
+                <h3 className="font-editorial text-base font-bold text-stone-900">{item.title}</h3>
+                <p className="text-[11px] leading-relaxed text-stone-600">{item.text}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Diferenciadores */}
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {[
+            { title: 'Asesoría personalizada', text: 'Cada clienta recibe una recomendación según su tipo de piel, rutina y presupuesto. Sin ventas a ciegas.' },
+            { title: 'Productos 100 % originales', text: 'Trabajamos con catálogo y códigos oficiales Yanbal. Garantía de fábrica y trazabilidad por factura.' },
+            { title: 'Acompañamiento real', text: 'La consultora y su líder están disponibles por WhatsApp para resolver dudas, cambios y seguimiento.' },
+          ].map((item) => (
+            <div key={item.title} className="rounded-3xl border border-stone-200/80 bg-white p-6 shadow-xs space-y-2">
+              <h3 className="font-editorial text-base font-bold text-stone-900">{item.title}</h3>
+              <p className="text-xs leading-relaxed text-stone-600">{item.text}</p>
+            </div>
+          ))}
+        </section>
+
+        {/* Cifras y CTA */}
+        <section className="rounded-3xl bg-stone-900 p-8 text-white sm:p-10">
+          <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
+            {[
+              { value: '6+', label: 'Años acompañando clientas' },
+              { value: '4', label: 'Líneas de belleza' },
+              { value: '100%', label: 'Producto original Yanbal' },
+              { value: '30 días', label: 'Para reembolsos verificados' },
+            ].map((stat) => (
+              <div key={stat.label}>
+                <strong className="block font-editorial text-2xl text-amber-400">{stat.value}</strong>
+                <span className="text-[11px] text-stone-300">{stat.label}</span>
+              </div>
+            ))}
+          </div>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <button
+              onClick={() => navigate('/catalogo')}
+              className="rounded-full bg-orange-600 px-5 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-orange-700 cursor-pointer"
+            >
+              Ver catálogo de campaña
+            </button>
+            <button
+              onClick={() => navigate('/unete')}
+              className="rounded-full border border-white/30 px-5 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-white/10 cursor-pointer"
+            >
+              Quiero unirme al equipo
+            </button>
+          </div>
+        </section>
+
       </div>
     </div>
   );

@@ -1,0 +1,117 @@
+{
+  "target": "http://127.0.0.1:5075",
+  "generatedAt": "2026-11-07T16:20:13.589Z",
+  "summary": {
+    "total": 21,
+    "passed": 20,
+    "failed": 0,
+    "skipped": 1
+  },
+  "results": [
+    {
+      "name": "Healthcheck disponible",
+      "status": "PASS",
+      "detail": "{\"status\":\"healthy\",\"service\":\"YanbalPrestige.Api\",\"timestamp\":\"2026-11-07T16:20:12.4652969Z\"}"
+    },
+    {
+      "name": "Cabecera X-Content-Type-Options: nosniff",
+      "status": "PASS",
+      "detail": "nosniff"
+    },
+    {
+      "name": "Cabecera X-Frame-Options: DENY",
+      "status": "PASS",
+      "detail": "DENY"
+    },
+    {
+      "name": "Content-Security-Policy presente",
+      "status": "PASS",
+      "detail": "default-src 'none'; frame-ancestors 'none'; base-uri 'none'"
+    },
+    {
+      "name": "Referrer-Policy y Permissions-Policy",
+      "status": "PASS",
+      "detail": "ok"
+    },
+    {
+      "name": "Pedidos sin sesión: 401",
+      "status": "PASS",
+      "detail": "HTTP 401"
+    },
+    {
+      "name": "CRM sin sesión: 401",
+      "status": "PASS",
+      "detail": "HTTP 401"
+    },
+    {
+      "name": "Alta de producto sin sesión: 401",
+      "status": "PASS",
+      "detail": "HTTP 401"
+    },
+    {
+      "name": "JWT alterado: 401",
+      "status": "PASS",
+      "detail": "HTTP 401"
+    },
+    {
+      "name": "Login con correo inválido: 400 (no 500)",
+      "status": "PASS",
+      "detail": "HTTP 400"
+    },
+    {
+      "name": "Login con cuerpo vacío: 400",
+      "status": "PASS",
+      "detail": "HTTP 400"
+    },
+    {
+      "name": "Payload gigante rechazado sin caída",
+      "status": "PASS",
+      "detail": "HTTP 400"
+    },
+    {
+      "name": "CORS: origen no autorizado no recibe ACAO",
+      "status": "PASS",
+      "detail": "sin cabecera para evil.example"
+    },
+    {
+      "name": "CORS: origen permitido recibe ACAO",
+      "status": "PASS",
+      "detail": "http://127.0.0.1:5173"
+    },
+    {
+      "name": "Login demo real (requiere BD)",
+      "status": "PASS",
+      "detail": "token emitido"
+    },
+    {
+      "name": "PIN con respuesta neutra (requiere BD)",
+      "status": "SKIP",
+      "detail": "Entorno Development: el PIN se devuelve a propósito para pruebas locales"
+    },
+    {
+      "name": "IDOR: consultora no lee un pedido ajeno",
+      "status": "PASS",
+      "detail": "HTTP 404 para pedido ajeno"
+    },
+    {
+      "name": "IDOR: consultora no cambia el estado de un pedido ajeno",
+      "status": "PASS",
+      "detail": "HTTP 404 al intentar mutar pedido ajeno"
+    },
+    {
+      "name": "Asistente no ve la lista completa de usuarios",
+      "status": "PASS",
+      "detail": "solo su propio perfil (1 usuario)"
+    },
+    {
+      "name": "Asistente sí puede ver la cartera consolidada",
+      "status": "PASS",
+      "detail": "HTTP 200 en cartera consolidada"
+    },
+    {
+      "name": "Rate limit de autenticación (429)",
+      "status": "PASS",
+      "detail": "12 de 14 bloqueadas con 429"
+    }
+  ]
+}

@@ -1,17 +1,20 @@
 import React, { useState } from 'react';
 import { Edit3, Check, X } from 'lucide-react';
 import { useConfig } from '../../../context/ConfigContext';
-import type { LineAccordionItem } from '../../../types';
+import type { LineAccordionItem, MediaItem } from '../../../types';
+import { MediaUploader } from '../../media/MediaUploader';
 
 export const CmsLinesSection: React.FC = () => {
-  const { linesAccordion, saveLineAccordion } = useConfig();
+  const { linesAccordion, saveLineAccordion, products } = useConfig();
   const [editingLine, setEditingLine] = useState<LineAccordionItem | null>(null);
 
   const [title, setTitle] = useState('');
   const [tagline, setTagline] = useState('');
   const [description, setDescription] = useState('');
   const [image, setImage] = useState('');
+  const [imageMedia, setImageMedia] = useState<MediaItem[]>([]);
   const [claimsStr, setClaimsStr] = useState('');
+  const [pinnedProductId, setPinnedProductId] = useState('');
 
   const handleOpenEdit = (line: LineAccordionItem) => {
     setEditingLine(line);
@@ -19,7 +22,11 @@ export const CmsLinesSection: React.FC = () => {
     setTagline(line.tagline);
     setDescription(line.description);
     setImage(line.image);
+    setImageMedia(
+      line.image ? [{ id: 'cover', url: line.image, type: 'image', alt: line.title }] : []
+    );
     setClaimsStr(line.claims.join(', '));
+    setPinnedProductId(line.pinnedProductId || '');
   };
 
   const handleSave = (e: React.FormEvent) => {
@@ -34,6 +41,7 @@ export const CmsLinesSection: React.FC = () => {
       description,
       image,
       claims: claims.length > 0 ? claims : editingLine.claims,
+      pinnedProductId: pinnedProductId || undefined,
     });
     setEditingLine(null);
   };
@@ -73,14 +81,43 @@ export const CmsLinesSection: React.FC = () => {
             />
           </div>
 
-          <input
-            type="url"
-            required
-            placeholder="URL de la imagen"
-            value={image}
-            onChange={(e) => setImage(e.target.value)}
-            className="w-full p-2.5 text-xs rounded-xl border border-stone-200 bg-stone-50/50"
-          />
+          <div className="p-3 rounded-2xl border border-stone-200 bg-stone-50/40">
+            <MediaUploader
+              media={imageMedia}
+              onChange={(next) => {
+                setImageMedia(next);
+                setImage(next[0]?.url || '');
+              }}
+              accept="image"
+              maxFiles={1}
+              subFolder="lines"
+              label="Fotografía de la línea"
+              hint="Sube una foto vertical u horizontal de la colección."
+              showAlt={false}
+            />
+          </div>
+
+          <div>
+            <label className="text-[11px] font-semibold text-stone-700 block mb-1">
+              Producto destacado de la línea
+            </label>
+            <select
+              value={pinnedProductId}
+              onChange={(e) => setPinnedProductId(e.target.value)}
+              className="w-full p-2.5 text-xs rounded-xl border border-stone-200 bg-stone-50/50"
+            >
+              <option value="">Automático: el más vendido de la categoría</option>
+              {products.map((product) => (
+                <option key={product.id} value={product.id}>
+                  {product.name} · {product.code} · {product.categoryLabel}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-[10px] text-stone-400">
+              Si no fijas uno, la portada mostrará el producto con más unidades vendidas de esa
+              categoría y rotará cuando cambien las ventas.
+            </p>
+          </div>
 
           <textarea
             rows={2}
