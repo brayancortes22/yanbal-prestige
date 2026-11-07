@@ -14,6 +14,8 @@ interface Props {
   label?: string;
   hint?: string;
   showAlt?: boolean;
+  /** Subcarpeta de /uploads donde el backend guarda los archivos. */
+  subFolder?: string;
 }
 
 export const MediaUploader: React.FC<Props> = ({
@@ -24,12 +26,10 @@ export const MediaUploader: React.FC<Props> = ({
   label = 'Fotos y videos',
   hint,
   showAlt = true,
+  subFolder = 'products',
 }) => {
-  const { addFiles, addUrl, remove, move, setCover, error, clearError } = useMediaLibrary(
-    media,
-    onChange,
-    { accept, maxFiles }
-  );
+  const { addFiles, addUrl, remove, move, setCover, uploading, error, clearError } =
+    useMediaLibrary(media, onChange, { accept, maxFiles, subFolder });
   const [urlDraft, setUrlDraft] = useState('');
   const counts = countMedia(media);
   const hasDemoFiles = media.some((item) => item.demo);
@@ -59,6 +59,13 @@ export const MediaUploader: React.FC<Props> = ({
       </div>
 
       <MediaDropzone accept={accept} onFiles={addFiles} compact={media.length > 0} />
+
+      {uploading && (
+        <div className="flex items-center gap-2 rounded-xl border border-sky-200 bg-sky-50 p-2.5 text-[11px] text-sky-700">
+          <span className="h-3 w-3 animate-spin rounded-full border-2 border-sky-600 border-t-transparent" />
+          <span>Optimizando y subiendo archivos al servidor…</span>
+        </div>
+      )}
 
       <div className="flex items-center gap-2">
         <div className="relative flex-1">

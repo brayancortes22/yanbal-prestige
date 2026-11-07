@@ -1,6 +1,8 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OutputCaching;
+using Microsoft.AspNetCore.RateLimiting;
 using YanbalPrestige.Api.Common.Security;
 using YanbalPrestige.Api.DTOs;
 using YanbalPrestige.Api.Services.Interfaces;
@@ -14,14 +16,21 @@ public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
     private readonly ITurnstileService _turnstileService;
+    private readonly IWebHostEnvironment _environment;
 
-    public AuthController(IAuthService authService, ITurnstileService turnstileService)
+    public AuthController(
+        IAuthService authService,
+        ITurnstileService turnstileService,
+        IWebHostEnvironment environment)
     {
         _authService = authService;
         _turnstileService = turnstileService;
+        _environment = environment;
     }
 
     [HttpPost("login")]
+    [AllowAnonymous]
+    [EnableRateLimiting("AuthLimiter")]
     public async Task<IActionResult> Login([FromBody] LoginRequestDto request)
     {
         var result = await _authService.LoginAsync(request);
@@ -30,6 +39,8 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("request-pin")]
+    [AllowAnonymous]
+    [EnableRateLimiting("AuthLimiter")]
     public async Task<IActionResult> RequestPin([FromBody] RequestPinDto request)
     {
         var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
@@ -40,11 +51,20 @@ public class AuthController : ControllerBase
         }
 
         var pin = await _authService.GeneratePinAsync(request.Email);
-        if (pin == null) return NotFound(new { message = "Usuario no encontrado." });
-        return Ok(new { success = true, pin, message = "PIN de recuperación generado exitosamente." });
+
+        // Respuesta neutra: no confirma si el correo existe (anti-enumeración).
+        // El PIN solo se devuelve en Development para poder probar sin SMTP.
+        return Ok(new
+        {
+            success = true,
+            message = "Si el correo está registrado, recibirás un PIN de recuperación.",
+            pin = _environment.IsDevelopment() ? pin : null
+        });
     }
 
     [HttpPost("reset-password")]
+    [AllowAnonymous]
+    [EnableRateLimiting("AuthLimiter")]
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordWithPinDto request)
     {
         var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
@@ -59,16 +79,36 @@ public class AuthController : ControllerBase
         return Ok(new { success = true, message = "Contraseña restablecida con éxito." });
     }
 
+    /// <summary>Perfil del usuario autenticado (cualquier rol).</summary>
+    [HttpGet("me")]
+    [Authorize]
+    public async Task<IActionResult> Me()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var users = await _authService.GetUsersAsync();
+        var current = users.FirstOrDefault(u => u.Id == userId);
+        if (current == null) return NotFound(new { message = "Usuario no encontrado." });
+        return Ok(current);
+    }
+
     [HttpGet("users")]
-    [Authorize(Roles = AuthRoles.ContentManagers)]
+    [Authorize]
     public async Task<IActionResult> GetUsers()
     {
         var users = await _authService.GetUsersAsync();
-        return Ok(users);
+        if (User.IsInRole(AuthRoles.Director)) return Ok(users);
+
+        var currentId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        // Un líder ve su perfil y su equipo; los demás solo su propio perfil.
+        if (User.IsInRole(AuthRoles.Leader))
+            return Ok(users.Where(u => u.Id == currentId || u.LeaderId == currentId));
+
+        return Ok(users.Where(u => u.Id == currentId));
     }
 
     [HttpPost("users")]
-    [Authorize(Roles = AuthRoles.ContentManagers)]
+    [Authorize(Roles = AuthRoles.Owners)]
     public async Task<IActionResult> SaveUser([FromBody] UserDto userDto)
     {
         var user = await _authService.SaveUserAsync(userDto);
@@ -76,7 +116,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPatch("users/{id}/toggle")]
-    [Authorize(Roles = AuthRoles.ContentManagers)]
+    [Authorize(Roles = AuthRoles.Owners)]
     public async Task<IActionResult> ToggleUser(string id)
     {
         var success = await _authService.ToggleUserStatusAsync(id);
@@ -85,7 +125,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpDelete("users/{id}")]
-    [Authorize(Roles = AuthRoles.ContentManagers)]
+    [Authorize(Roles = AuthRoles.Owners)]
     public async Task<IActionResult> DeleteUser(string id)
     {
         var success = await _authService.DeleteUserAsync(id);

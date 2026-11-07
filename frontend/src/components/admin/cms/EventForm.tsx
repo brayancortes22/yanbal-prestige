@@ -14,8 +14,15 @@ interface Props {
 
 export const EventForm: React.FC<Props> = ({ event, onSave, onCancel }) => {
   const [title, setTitle] = useState(event?.title ?? '');
-  const [date, setDate] = useState(event?.date ?? '');
-  const [time, setTime] = useState(event?.time ?? '3:00 PM - 5:30 PM');
+  const [startDate, setStartDate] = useState(
+    event?.startAt?.slice(0, 10) || new Date().toISOString().slice(0, 10)
+  );
+  const [startTime, setStartTime] = useState(
+    event?.startAt ? event.startAt.slice(11, 16) : '15:00'
+  );
+  const [endTime, setEndTime] = useState(
+    event?.endAt ? event.endAt.slice(11, 16) : '17:30'
+  );
   const [modality, setModality] = useState<EventItem['modality']>(
     event?.modality ?? 'Presencial'
   );
@@ -36,10 +43,39 @@ export const EventForm: React.FC<Props> = ({ event, onSave, onCancel }) => {
   const handleSubmit = (submitEvent: React.FormEvent) => {
     submitEvent.preventDefault();
 
-    if (!title.trim() || !date.trim()) {
-      setError('El título y la fecha son obligatorios.');
+    if (!title.trim() || !startDate || !startTime || !endTime) {
+      setError('El título, la fecha y el horario son obligatorios.');
       return;
     }
+
+    const start = new Date(`${startDate}T${startTime}:00`);
+    const end = new Date(`${startDate}T${endTime}:00`);
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      setError('La fecha u hora no es válida.');
+      return;
+    }
+    if (end <= start) {
+      setError('La hora de fin debe ser posterior a la hora de inicio.');
+      return;
+    }
+    if (start < todayStart) {
+      setError('No se puede publicar un evento en una fecha anterior al día de hoy.');
+      return;
+    }
+
+    const dateLabel = new Intl.DateTimeFormat('es-CO', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    }).format(start);
+    const timeLabel = `${start.toLocaleTimeString('es-CO', {
+      hour: 'numeric',
+      minute: '2-digit',
+    })} - ${end.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' })}`;
 
     const cover =
       media.find((item) => item.type === 'image')?.url || event?.image || FALLBACK_IMAGE;
@@ -47,8 +83,10 @@ export const EventForm: React.FC<Props> = ({ event, onSave, onCancel }) => {
     onSave({
       id: event?.id ?? `ev-${Date.now()}`,
       title: title.trim(),
-      date: date.trim(),
-      time: time.trim(),
+      date: dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1),
+      time: timeLabel,
+      startAt: start.toISOString(),
+      endAt: end.toISOString(),
       modality,
       location: location.trim(),
       image: cover,
@@ -61,6 +99,7 @@ export const EventForm: React.FC<Props> = ({ event, onSave, onCancel }) => {
   return (
     <form
       onSubmit={handleSubmit}
+      noValidate
       className="bg-white p-6 rounded-3xl border border-orange-200 shadow-sm space-y-4"
     >
       <div className="flex items-center justify-between border-b border-stone-100 pb-2">
@@ -86,20 +125,36 @@ export const EventForm: React.FC<Props> = ({ event, onSave, onCancel }) => {
           className="p-2.5 text-xs rounded-xl border border-stone-200 bg-stone-50/50"
         />
         <input
-          type="text"
+          type="date"
           required
-          placeholder="Fecha (ej: Sábado, 14 de Noviembre)"
-          value={date}
-          onChange={(changeEvent) => setDate(changeEvent.target.value)}
+          min={new Date().toISOString().slice(0, 10)}
+          value={startDate}
+          onChange={(changeEvent) => setStartDate(changeEvent.target.value)}
           className="p-2.5 text-xs rounded-xl border border-stone-200 bg-stone-50/50"
+          aria-label="Fecha del evento"
         />
-        <input
-          type="text"
-          placeholder="Horario (ej: 3:00 PM - 5:30 PM)"
-          value={time}
-          onChange={(changeEvent) => setTime(changeEvent.target.value)}
-          className="p-2.5 text-xs rounded-xl border border-stone-200 bg-stone-50/50"
-        />
+        <div className="grid grid-cols-2 gap-2">
+          <label className="text-[10px] font-semibold text-stone-500">
+            Inicio
+            <input
+              type="time"
+              required
+              value={startTime}
+              onChange={(changeEvent) => setStartTime(changeEvent.target.value)}
+              className="mt-0.5 w-full p-2.5 text-xs rounded-xl border border-stone-200 bg-stone-50/50"
+            />
+          </label>
+          <label className="text-[10px] font-semibold text-stone-500">
+            Fin
+            <input
+              type="time"
+              required
+              value={endTime}
+              onChange={(changeEvent) => setEndTime(changeEvent.target.value)}
+              className="mt-0.5 w-full p-2.5 text-xs rounded-xl border border-stone-200 bg-stone-50/50"
+            />
+          </label>
+        </div>
         <select
           value={modality}
           onChange={(changeEvent) =>
@@ -142,6 +197,7 @@ export const EventForm: React.FC<Props> = ({ event, onSave, onCancel }) => {
           media={media}
           onChange={setMedia}
           maxFiles={8}
+          subFolder="events"
           label="Fotos y videos del evento"
           hint="Sube varias fotos del taller anterior y un video corto de invitación."
         />

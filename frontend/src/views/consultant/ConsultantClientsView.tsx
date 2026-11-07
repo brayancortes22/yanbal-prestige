@@ -3,10 +3,35 @@ import { Plus, MessageCircle, Trash2, Search, Edit3, X, Check, CalendarCheck } f
 import { ConsultantNav } from '../../components/consultant/ConsultantNav';
 import { ClientCardSkeleton } from '../../components/common/skeletons/ClientCardSkeleton';
 import { useConfig } from '../../context/ConfigContext';
+import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../components/ui/ToastProvider';
+import { useConfirm } from '../../components/ui/ConfirmProvider';
+import { PostalCodeField } from '../../components/common/PostalCodeField';
 import type { ConsultantClient } from '../../types';
 
 export const ConsultantClientsView: React.FC = () => {
-  const { clients, addClient, updateClient, deleteClient } = useConfig();
+  const { clients, users, addClient, updateClient, deleteClient } = useConfig();
+  const { email, role, username } = useAuth();
+  const { notify } = useToast();
+  const confirm = useConfirm();
+  const currentUser =
+    users.find((user) => user.email.toLowerCase() === (email || '').toLowerCase()) ||
+    users.find((user) => user.name.toLowerCase() === (username || '').toLowerCase()) ||
+    users.find((user) => user.role === 'CONSULTORA');
+
+  // Cada consultora ve solo su cartera; la líder ve su equipo y la
+  // administradora ve toda la red.
+  const visibleClients = useMemo(() => {
+    if (role === 'DIRECTORA' || role === 'SUPER_ADMIN') return clients;
+    if (role === 'LIDER_ZONA') {
+      const teamIds = new Set(
+        users.filter((user) => user.leaderId === currentUser?.id).map((user) => user.id)
+      );
+      if (currentUser) teamIds.add(currentUser.id);
+      return clients.filter((client) => client.consultantId && teamIds.has(client.consultantId));
+    }
+    return clients.filter((client) => client.consultantId === currentUser?.id);
+  }, [clients, users, role, currentUser?.id]);
   const [searchTerm, setSearchTerm] = useState('');
   const [skinFilter, setSkinFilter] = useState('todas');
   const [catFilter, setCatFilter] = useState('todas');
@@ -17,6 +42,12 @@ export const ConsultantClientsView: React.FC = () => {
   const [editId, setEditId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [clientEmail, setClientEmail] = useState('');
+  const [documentId, setDocumentId] = useState('');
+  const [city, setCity] = useState('Bogotá D.C.');
+  const [neighborhood, setNeighborhood] = useState('');
+  const [address, setAddress] = useState('');
+  const [postalCode, setPostalCode] = useState('');
   const [skinType, setSkinType] = useState<ConsultantClient['skinType']>('Mixta');
   const [favoriteCategory, setFavoriteCategory] = useState<ConsultantClient['favoriteCategory']>('Tratamiento Facial');
   const [notes, setNotes] = useState('');
@@ -25,6 +56,12 @@ export const ConsultantClientsView: React.FC = () => {
     setEditId(null);
     setName('');
     setPhone('');
+    setClientEmail('');
+    setDocumentId('');
+    setCity('Bogotá D.C.');
+    setNeighborhood('');
+    setAddress('');
+    setPostalCode('');
     setSkinType('Mixta');
     setFavoriteCategory('Tratamiento Facial');
     setNotes('');
@@ -35,6 +72,12 @@ export const ConsultantClientsView: React.FC = () => {
     setEditId(c.id);
     setName(c.name);
     setPhone(c.phone);
+    setClientEmail(c.email || '');
+    setDocumentId(c.documentId || '');
+    setCity(c.city || 'Bogotá D.C.');
+    setNeighborhood(c.neighborhood || '');
+    setAddress(c.address || '');
+    setPostalCode(c.postalCode || '');
     setSkinType(c.skinType);
     setFavoriteCategory(c.favoriteCategory);
     setNotes(c.notes);
@@ -49,8 +92,15 @@ export const ConsultantClientsView: React.FC = () => {
       const existing = clients.find((c) => c.id === editId);
       updateClient({
         id: editId,
+        consultantId: existing?.consultantId ?? currentUser?.id,
         name,
         phone,
+        email: clientEmail,
+        documentId,
+        city,
+        neighborhood,
+        address,
+        postalCode,
         skinType,
         favoriteCategory,
         notes,
@@ -58,8 +108,15 @@ export const ConsultantClientsView: React.FC = () => {
       });
     } else {
       addClient({
+        consultantId: currentUser?.id,
         name,
         phone,
+        email: clientEmail,
+        documentId,
+        city,
+        neighborhood,
+        address,
+        postalCode,
         skinType,
         favoriteCategory,
         notes,
@@ -67,6 +124,23 @@ export const ConsultantClientsView: React.FC = () => {
       });
     }
     setIsEditing(false);
+    notify(
+      editId
+        ? `La ficha de ${name} se actualizó.`
+        : `${name} se agregó a tu cartera de clientas.`
+    );
+  };
+
+  const handleDeleteClient = async (client: ConsultantClient) => {
+    const accepted = await confirm({
+      title: '¿Eliminar la ficha de esta clienta?',
+      message: `Se borrarán los datos de ${client.name}. Sus pedidos históricos se conservan.`,
+      confirmText: 'Sí, eliminar ficha',
+      tone: 'danger',
+    });
+    if (!accepted) return;
+    deleteClient(client.id);
+    notify(`La ficha de ${client.name} fue eliminada.`, 'info');
   };
 
   const handleMarkContactToday = (c: ConsultantClient) => {
@@ -83,13 +157,13 @@ export const ConsultantClientsView: React.FC = () => {
   };
 
   const filteredClients = useMemo(() => {
-    return clients.filter((c) => {
+    return visibleClients.filter((c) => {
       const matchSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase()) || c.phone.includes(searchTerm);
       const matchSkin = skinFilter === 'todas' || c.skinType === skinFilter;
       const matchCat = catFilter === 'todas' || c.favoriteCategory === catFilter;
       return matchSearch && matchSkin && matchCat;
     });
-  }, [clients, searchTerm, skinFilter, catFilter]);
+  }, [visibleClients, searchTerm, skinFilter, catFilter]);
 
   return (
     <div className="bg-brand-cream min-h-[85vh] animate-fadeIn">
@@ -148,6 +222,46 @@ export const ConsultantClientsView: React.FC = () => {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 className="p-2.5 text-xs rounded-xl border border-stone-200 bg-stone-50/50"
+              />
+              <input
+                type="email"
+                placeholder="Correo electrónico"
+                value={clientEmail}
+                onChange={(e) => setClientEmail(e.target.value)}
+                className="p-2.5 text-xs rounded-xl border border-stone-200 bg-stone-50/50"
+              />
+              <input
+                type="text"
+                placeholder="Cédula / NIT (opcional)"
+                value={documentId}
+                onChange={(e) => setDocumentId(e.target.value)}
+                className="p-2.5 text-xs rounded-xl border border-stone-200 bg-stone-50/50"
+              />
+              <input
+                type="text"
+                placeholder="Ciudad / Municipio"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                className="p-2.5 text-xs rounded-xl border border-stone-200 bg-stone-50/50"
+              />
+              <input
+                type="text"
+                placeholder="Barrio / Localidad"
+                value={neighborhood}
+                onChange={(e) => setNeighborhood(e.target.value)}
+                className="p-2.5 text-xs rounded-xl border border-stone-200 bg-stone-50/50"
+              />
+              <input
+                type="text"
+                placeholder="Dirección (calle, carrera, apto)"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                className="p-2.5 text-xs rounded-xl border border-stone-200 bg-stone-50/50"
+              />
+              <PostalCodeField
+                value={postalCode}
+                onChange={setPostalCode}
+                className="text-xs"
               />
               <select
                 value={skinType}
@@ -263,6 +377,16 @@ export const ConsultantClientsView: React.FC = () => {
                     <div>
                       <h4 className="font-editorial text-base font-bold text-stone-900">{client.name}</h4>
                       <span className="text-xs text-stone-400 font-mono">{client.phone}</span>
+                      {client.email && (
+                        <span className="block text-[11px] text-stone-500">{client.email}</span>
+                      )}
+                      {(client.city || client.neighborhood) && (
+                        <span className="block text-[11px] text-stone-500">
+                          {[client.city, client.neighborhood, client.address, client.postalCode]
+                            .filter(Boolean)
+                            .join(' · ')}
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-1">
                       <button
@@ -273,11 +397,7 @@ export const ConsultantClientsView: React.FC = () => {
                         <Edit3 className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => {
-                          if (confirm(`¿Eliminar la ficha de ${client.name}?`)) {
-                            deleteClient(client.id);
-                          }
-                        }}
+                        onClick={() => handleDeleteClient(client)}
                         className="p-1.5 text-stone-300 hover:text-red-500 transition-colors cursor-pointer"
                         title="Eliminar ficha"
                       >

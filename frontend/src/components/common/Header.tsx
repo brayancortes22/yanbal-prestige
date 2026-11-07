@@ -27,28 +27,28 @@ export const Header: React.FC<HeaderProps> = ({ searchQuery, onSearchChange }) =
 
   return (
     <>
-      <aside className="bg-stone-900 text-stone-300 text-xs py-2 px-4 border-b border-stone-800">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="inline-block w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
-            <span className="text-[11px] sm:text-xs">
+      <aside className="border-b border-stone-800 bg-stone-900 px-4 py-2 text-xs text-stone-300">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="inline-block h-2 w-2 shrink-0 animate-pulse rounded-full bg-orange-500" />
+            <span className="truncate text-[11px] sm:text-xs" title={announcements.topBannerText}>
               {announcements.topBannerText}
             </span>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex shrink-0 items-center gap-3">
             <Link
               to="/unete"
-              className="text-[11px] text-orange-400 hover:text-orange-300 font-semibold underline underline-offset-2 transition-colors"
+              className="whitespace-nowrap text-[10px] font-semibold text-orange-400 underline underline-offset-2 transition-colors hover:text-orange-300 sm:text-[11px]"
             >
-              Trabaja con nosotros. ¡Regístrate aquí!
+              Trabaja con nosotros
             </Link>
             <Link
               to="/admin"
-              className="text-[10px] text-stone-400 hover:text-white transition-colors flex items-center gap-1 border-l border-stone-700 pl-3"
+              className="hidden items-center gap-1 border-l border-stone-700 pl-3 text-[10px] text-stone-400 transition-colors hover:text-white sm:flex"
               title="Acceso CMS Directora"
             >
-              <ShieldAlert className="w-3 h-3 text-orange-500" />
-              <span>Acceso CMS</span>
+              <ShieldAlert className="h-3 w-3 shrink-0 text-orange-500" />
+              <span className="hidden md:inline">Acceso CMS</span>
             </Link>
           </div>
         </div>

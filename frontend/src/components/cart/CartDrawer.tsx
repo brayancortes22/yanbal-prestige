@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { X, Trash2, ShoppingBag, Plus, Minus, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
+import { OrderCheckoutModal } from './OrderCheckoutModal';
 
 export const CartDrawer: React.FC = () => {
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const {
     cart,
     isOpen,
@@ -12,7 +14,6 @@ export const CartDrawer: React.FC = () => {
     clearCart,
     totalPrice,
     totalItems,
-    generateWhatsAppLink
   } = useCart();
 
   if (!isOpen) return null;
@@ -133,15 +134,14 @@ export const CartDrawer: React.FC = () => {
               </p>
 
               <div className="space-y-2">
-                <a
-                  href={generateWhatsAppLink()}
-                  target="_blank"
-                  rel="noreferrer"
+                <button
+                  type="button"
+                  onClick={() => setIsCheckoutOpen(true)}
                   className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
                 >
-                  <span>Pedir por WhatsApp a mi Consultora</span>
+                  <span>Confirmar Pedido & Factura WhatsApp</span>
                   <ArrowRight className="w-4 h-4" />
-                </a>
+                </button>
 
                 <button
                   onClick={clearCart}
@@ -155,6 +155,16 @@ export const CartDrawer: React.FC = () => {
 
         </div>
       </div>
+
+      <OrderCheckoutModal
+        isOpen={isCheckoutOpen}
+        onClose={() => setIsCheckoutOpen(false)}
+        cart={cart}
+        totalPrice={totalPrice}
+        onOrderSuccess={() => {
+          clearCart();
+        }}
+      />
     </div>
   );
 };

@@ -15,8 +15,9 @@ public class PasswordResetPin
     [Column("usuario_id")]
     public string UserId { get; set; } = string.Empty;
 
+    // Almacena el hash PBKDF2 del PIN, nunca el PIN en claro.
     [Required]
-    [MaxLength(10)]
+    [MaxLength(255)]
     [Column("pin_codigo")]
     public string PinCode { get; set; } = string.Empty;
 

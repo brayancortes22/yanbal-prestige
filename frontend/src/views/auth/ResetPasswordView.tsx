@@ -1,74 +1,101 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { KeyRound, ShieldCheck, ArrowRight, MessageCircle, CheckCircle } from 'lucide-react';
+import { KeyRound, ShieldCheck, ArrowRight, CheckCircle, MailCheck } from 'lucide-react';
 import { useConfig } from '../../context/ConfigContext';
-import type { PasswordResetRequest } from '../../types';
+import { api, isApiConfigured } from '../../services/api';
 import { TurnstileWidget } from '../../components/common/TurnstileWidget';
 import { isTurnstileEnabled } from '../../config/turnstile';
 
+type Step = 'request' | 'verify' | 'new-password' | 'success';
+
+/**
+ * Recuperación por PIN. Con API configurada llama al backend (PIN
+ * criptográfico, hash PBKDF2 y sin autodesbloqueo por cédula). En modo
+ * demo usa el almacenamiento local y muestra el PIN solo para poder probar.
+ */
 export const ResetPasswordView: React.FC = () => {
-  const { createResetRequest, completeResetPassword, resetRequests } = useConfig();
+  const { users, createResetRequest, completeResetPassword } = useConfig();
   const navigate = useNavigate();
+  const apiMode = isApiConfigured();
 
   const [email, setEmail] = useState('');
-  const [documentId, setDocumentId] = useState('');
   const [pinInput, setPinInput] = useState('');
+  const [demoPin, setDemoPin] = useState('');
+  const [requestId, setRequestId] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [turnstileToken, setTurnstileToken] = useState('');
-
-  const [activeRequest, setActiveRequest] = useState<PasswordResetRequest | null>(null);
-  const [step, setStep] = useState<'request' | 'verify' | 'new-password' | 'success'>('request');
+  const [step, setStep] = useState<Step>('request');
   const [errorMsg, setErrorMsg] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Paso 1: Solicitar PIN (con autodesbloqueo por Cédula)
-  const handleRequestPin = (e: React.FormEvent) => {
+  const handleRequestPin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
-    if (!email) {
-      setErrorMsg('Por favor ingresa tu correo electrónico registrado.');
+
+    if (!email.trim()) {
+      setErrorMsg('Ingresa tu correo electrónico registrado.');
       return;
     }
 
     if (isTurnstileEnabled && !turnstileToken) {
-      setErrorMsg('Por favor complete la verificación de seguridad anti-bots.');
+      setErrorMsg('Completa la verificación de seguridad anti-bots.');
       return;
     }
 
-    const req = createResetRequest(email, documentId);
-    setActiveRequest(req);
+    setIsSubmitting(true);
+    try {
+      if (apiMode) {
+        const result = await api.requestPin(email.trim().toLowerCase(), turnstileToken);
+        if (!result.success) {
+          setErrorMsg(result.message || 'No fue posible generar el PIN.');
+          return;
+        }
+        setDemoPin(result.pin || '');
+      } else {
+        const user = users.find(
+          (candidate) => candidate.email.toLowerCase() === email.trim().toLowerCase() && candidate.active
+        );
+        if (!user) {
+          setErrorMsg('No existe una cuenta activa con ese correo.');
+          return;
+        }
+        const request = createResetRequest(user.email, user.documentId);
+        setRequestId(request.id);
+        setDemoPin(request.pinCode);
+      }
 
-    if (req.status === 'approved') {
-      // Autodesbloqueo exitoso por cédula sin esperar a la directora
-      setStep('new-password');
-    } else {
-      // Requiere PIN de la directora o ingresarlo manualmente
       setStep('verify');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  // Paso 2: Validar PIN de 6 dígitos
   const handleVerifyPin = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
-    if (!activeRequest) return;
 
-    // Verificar si fue aprobado en segundo plano por la directora
-    const currentReq = resetRequests.find((r) => r.id === activeRequest.id) || activeRequest;
-    if (currentReq.status === 'approved' || pinInput.trim() === activeRequest.pinCode) {
-      setStep('new-password');
-    } else {
-      setErrorMsg('Código PIN incorrecto o aún no ha sido autorizado por la Directora.');
+    if (!/^\d{6}$/.test(pinInput.trim())) {
+      setErrorMsg('El PIN debe tener exactamente 6 dígitos.');
+      return;
     }
+
+    // En modo demo se compara localmente; con API el backend valida el PIN
+    // junto con la nueva contraseña en el siguiente paso.
+    if (!apiMode && pinInput.trim() !== demoPin) {
+      setErrorMsg('PIN incorrecto o expirado. Solicita uno nuevo.');
+      return;
+    }
+
+    setStep('new-password');
   };
 
-  // Paso 3: Guardar nueva contraseña
-  const handleSavePassword = (e: React.FormEvent) => {
+  const handleSavePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
 
-    if (newPassword.length < 6) {
-      setErrorMsg('La contraseña debe tener al menos 6 caracteres.');
+    if (newPassword.length < 8 || !/[A-Za-z]/.test(newPassword) || !/\d/.test(newPassword)) {
+      setErrorMsg('La contraseña debe tener al menos 8 caracteres, una letra y un número.');
       return;
     }
 
@@ -77,181 +104,185 @@ export const ResetPasswordView: React.FC = () => {
       return;
     }
 
-    if (activeRequest) {
-      completeResetPassword(activeRequest.id);
+    setIsSubmitting(true);
+    try {
+      if (apiMode) {
+        const result = await api.resetPassword(
+          email.trim().toLowerCase(),
+          pinInput.trim(),
+          newPassword,
+          turnstileToken
+        );
+        if (!result.success) {
+          setErrorMsg(result.message || 'PIN inválido o expirado.');
+          return;
+        }
+      } else if (requestId) {
+        completeResetPassword(requestId);
+      }
+
+      setStep('success');
+    } finally {
+      setIsSubmitting(false);
     }
-    setStep('success');
   };
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full bg-white rounded-3xl border border-stone-200/80 shadow-lg p-6 sm:p-8 space-y-6">
-
-        {/* Encabezado */}
-        <div className="text-center space-y-2">
-          <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 mx-auto flex items-center justify-center">
-            <KeyRound className="w-6 h-6" />
+    <div className="flex min-h-[80vh] items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
+      <div className="w-full max-w-md space-y-6 rounded-3xl border border-stone-200/80 bg-white p-6 shadow-lg sm:p-8">
+        <div className="space-y-2 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-apricot-soft text-brand-apricot">
+            <KeyRound className="h-6 w-6" />
           </div>
-          <h2 className="font-editorial text-2xl font-bold text-stone-900">
-            Recuperar Contraseña
-          </h2>
+          <h2 className="font-editorial text-2xl font-bold text-stone-900">Recuperar contraseña</h2>
           <p className="text-xs text-stone-500">
-            Plataforma Segura Yanbal Prestige — Acceso de Consultoras y Directoras
+            Acceso seguro para consultoras y directoras de la red.
           </p>
         </div>
 
         {errorMsg && (
-          <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl text-center">
+          <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-center text-xs text-rose-700">
             {errorMsg}
           </div>
         )}
 
-        {/* Paso 1: Solicitud de PIN */}
         {step === 'request' && (
           <form onSubmit={handleRequestPin} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-stone-700 mb-1">Correo Electrónico Registrado *</label>
+              <label htmlFor="reset-email" className="mb-1 block text-xs font-semibold text-stone-700">
+                Correo electrónico registrado *
+              </label>
               <input
+                id="reset-email"
                 type="email"
                 required
+                autoComplete="email"
                 placeholder="ejemplo@yanbalprestige.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 text-xs bg-stone-50/50"
+                className="w-full rounded-xl border border-stone-200 bg-stone-50/50 px-3.5 py-2.5 text-xs"
               />
             </div>
 
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-xs font-semibold text-stone-700">Cédula de Ciudadanía (Opcional)</label>
-                <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">Autodesbloqueo 24/7</span>
-              </div>
-              <input
-                type="text"
-                placeholder="Ingresa tu cédula para autodesbloqueo inmediato..."
-                value={documentId}
-                onChange={(e) => setDocumentId(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 text-xs bg-stone-50/50"
-              />
-              <p className="text-[10px] text-stone-400 mt-1">
-                Si coincide con tu registro, el sistema te autorizará al instante sin esperar a la Directora.
-              </p>
-            </div>
-
-            {/* Cloudflare Turnstile Invisible */}
             <TurnstileWidget onSuccess={(token) => setTurnstileToken(token)} />
 
             <button
               type="submit"
-              className="w-full py-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
+              disabled={isSubmitting}
+              className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-brand-apricot py-3 text-xs font-semibold text-white shadow-md transition-all hover:bg-brand-apricot-dark disabled:opacity-60"
             >
-              <span>Generar Código PIN de Recuperación</span>
-              <ArrowRight className="w-4 h-4" />
+              <span>{isSubmitting ? 'Generando...' : 'Generar PIN de recuperación'}</span>
+              <ArrowRight className="h-4 w-4" />
             </button>
           </form>
         )}
 
-        {/* Paso 2: Verificación de PIN o Solicitud por WhatsApp a Directora */}
-        {step === 'verify' && activeRequest && (
+        {step === 'verify' && (
           <form onSubmit={handleVerifyPin} className="space-y-4">
-            <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 space-y-2">
-              <strong className="block font-semibold">Solicitud Generada: ID #{activeRequest.id.slice(-4)}</strong>
+            <div className="space-y-2 rounded-2xl border border-[#EADFD3] bg-brand-sand/40 p-3.5 text-xs text-stone-700">
+              <strong className="flex items-center gap-1.5 font-semibold text-stone-900">
+                <MailCheck className="h-4 w-4 text-brand-apricot" />
+                Revisa tu correo
+              </strong>
               <p className="text-[11px] leading-relaxed">
-                Pídele a tu Directora Yuli que te autorice en su panel o ingresa el PIN de 6 dígitos:
+                Enviamos un PIN de 6 dígitos a <strong>{email}</strong>.
+                {demoPin && (
+                  <span className="mt-1 block rounded-lg bg-white/70 px-2 py-1 font-mono text-[11px] text-stone-800">
+                    PIN demo: <strong>{demoPin}</strong>
+                  </span>
+                )}
               </p>
-              <a
-                href={`https://wa.me/573100000000?text=Hola%20Directora%20Yuli,%20solicit%C3%A9%20restablecer%20mi%20clave%20en%20Yanbal%20Prestige.%20Mi%20PIN%20de%20desbloqueo%20en%20tu%20panel%20es%20${activeRequest.pinCode}.`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs mt-1"
-              >
-                <MessageCircle className="w-3.5 h-3.5" />
-                <span>Avisar a Directora por WhatsApp</span>
-              </a>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-stone-700 mb-1">Código PIN de 6 Dígitos</label>
+              <label htmlFor="reset-pin" className="mb-1 block text-xs font-semibold text-stone-700">
+                Código PIN de 6 dígitos
+              </label>
               <input
+                id="reset-pin"
                 type="text"
+                inputMode="numeric"
                 maxLength={6}
-                placeholder="Ej: 482915"
+                required
                 value={pinInput}
-                onChange={(e) => setPinInput(e.target.value)}
-                className="w-full text-center font-mono text-xl tracking-widest py-2.5 rounded-xl border border-stone-200 bg-stone-50"
+                onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ''))}
+                className="w-full rounded-xl border border-stone-200 bg-stone-50 py-2.5 text-center font-mono text-xl tracking-widest"
               />
-              <span className="text-[10px] text-stone-400 block text-center mt-1">
-                (PIN Demo asignado: <strong className="text-stone-700">{activeRequest.pinCode}</strong>)
-              </span>
             </div>
 
             <button
               type="submit"
-              className="w-full py-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
+              className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-brand-apricot py-3 text-xs font-semibold text-white shadow-md transition-all hover:bg-brand-apricot-dark"
             >
-              <span>Validar PIN y Continuar</span>
-              <ArrowRight className="w-4 h-4" />
+              <span>Validar PIN y continuar</span>
+              <ArrowRight className="h-4 w-4" />
             </button>
           </form>
         )}
 
-        {/* Paso 3: Ingreso de nueva contraseña */}
         {step === 'new-password' && (
           <form onSubmit={handleSavePassword} className="space-y-4">
-            <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>Identidad validada con éxito. Define tu nueva contraseña:</span>
+            <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800">
+              <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-600" />
+              <span>Identidad validada. Define tu nueva contraseña:</span>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-stone-700 mb-1">Nueva Contraseña</label>
+              <label htmlFor="new-password" className="mb-1 block text-xs font-semibold text-stone-700">
+                Nueva contraseña
+              </label>
               <input
+                id="new-password"
                 type="password"
                 required
-                placeholder="Mínimo 6 caracteres"
+                autoComplete="new-password"
+                placeholder="Mínimo 8 caracteres, una letra y un número"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 text-xs bg-stone-50/50"
+                className="w-full rounded-xl border border-stone-200 bg-stone-50/50 px-3.5 py-2.5 text-xs"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-stone-700 mb-1">Confirmar Contraseña</label>
+              <label htmlFor="confirm-password" className="mb-1 block text-xs font-semibold text-stone-700">
+                Confirmar contraseña
+              </label>
               <input
+                id="confirm-password"
                 type="password"
                 required
+                autoComplete="new-password"
                 placeholder="Repite tu contraseña"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 text-xs bg-stone-50/50"
+                className="w-full rounded-xl border border-stone-200 bg-stone-50/50 px-3.5 py-2.5 text-xs"
               />
             </div>
 
             <button
               type="submit"
-              className="w-full py-3 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
+              disabled={isSubmitting}
+              className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-brand-apricot py-3 text-xs font-semibold text-white shadow-md transition-all hover:bg-brand-apricot-dark disabled:opacity-60"
             >
-              <span>Actualizar Contraseña</span>
-              <CheckCircle className="w-4 h-4" />
+              <span>{isSubmitting ? 'Actualizando...' : 'Actualizar contraseña'}</span>
+              <CheckCircle className="h-4 w-4" />
             </button>
           </form>
         )}
 
-        {/* Paso 4: Éxito */}
         {step === 'success' && (
-          <div className="text-center space-y-4">
-            <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 mx-auto flex items-center justify-center">
-              <CheckCircle className="w-6 h-6" />
+          <div className="space-y-4 text-center">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+              <CheckCircle className="h-6 w-6" />
             </div>
-            <h3 className="font-editorial text-lg font-bold text-stone-900">¡Contraseña Actualizada!</h3>
-            <p className="text-xs text-stone-500">
-              Tu nueva clave ha sido registrada de forma segura en la base de datos.
-            </p>
+            <h3 className="font-editorial text-lg font-bold text-stone-900">¡Contraseña actualizada!</h3>
+            <p className="text-xs text-stone-500">Ya puedes ingresar con tu nueva contraseña.</p>
             <button
+              type="button"
               onClick={() => navigate('/admin/login')}
-              className="w-full py-3 rounded-xl bg-stone-900 text-white font-semibold text-xs cursor-pointer"
+              className="w-full cursor-pointer rounded-xl bg-stone-900 py-3 text-xs font-semibold text-white"
             >
-              Ir a Iniciar Sesión
+              Ir a iniciar sesión
             </button>
           </div>
         )}
@@ -261,7 +292,6 @@ export const ResetPasswordView: React.FC = () => {
             Regresar a la página de ingreso
           </Link>
         </div>
-
       </div>
     </div>
   );

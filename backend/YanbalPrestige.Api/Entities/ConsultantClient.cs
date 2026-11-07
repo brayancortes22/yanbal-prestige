@@ -25,9 +25,37 @@ public class ConsultantClient
     [Column("telefono")]
     public string Phone { get; set; } = string.Empty;
 
+    [MaxLength(150)]
+    [Column("correo")]
+    public string Email { get; set; } = string.Empty;
+
+    [MaxLength(30)]
+    [Column("documento")]
+    public string DocumentId { get; set; } = string.Empty;
+
+    [MaxLength(200)]
+    [Column("direccion")]
+    public string Address { get; set; } = string.Empty;
+
+    [MaxLength(100)]
+    [Column("barrio")]
+    public string Neighborhood { get; set; } = string.Empty;
+
+    [MaxLength(20)]
+    [Column("codigo_postal")]
+    public string PostalCode { get; set; } = string.Empty;
+
+    [MaxLength(100)]
+    [Column("ciudad")]
+    public string City { get; set; } = string.Empty;
+
     [MaxLength(50)]
     [Column("tipo_piel")]
     public string SkinType { get; set; } = "Mixta";
+
+    [Column("categoria_favorita")]
+    [MaxLength(100)]
+    public string FavoriteCategory { get; set; } = "Tratamiento Facial";
 
     [MaxLength(100)]
     [Column("preferencia_fragancia")]

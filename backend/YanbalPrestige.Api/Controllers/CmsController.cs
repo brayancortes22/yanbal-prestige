@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 using YanbalPrestige.Api.Common.Security;
 using YanbalPrestige.Api.Entities;
 using YanbalPrestige.Api.Services.Interfaces;
@@ -20,6 +21,7 @@ public class CmsController : ControllerBase
 
     [HttpGet("slides")]
     [AllowAnonymous]
+    [OutputCache(PolicyName = "PublicCatalog")]
     public async Task<IActionResult> GetSlides() => Ok(await _cmsService.GetHeroSlidesAsync());
 
     [HttpPost("slides")]
@@ -52,6 +54,7 @@ public class CmsController : ControllerBase
 
     [HttpGet("events")]
     [AllowAnonymous]
+    [OutputCache(PolicyName = "PublicCatalog")]
     public async Task<IActionResult> GetEvents() => Ok(await _cmsService.GetEventsAsync());
 
     [HttpPost("events")]

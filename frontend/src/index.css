@@ -1,4 +1,22 @@
 @import "tailwindcss";
+@source "../index.html";
+@source "../src/**/*.{js,ts,jsx,tsx}";
+@source "./**/*.{js,ts,jsx,tsx}";
+
+/* Tokens de marca expuestos como utilidades de Tailwind v4.
+   Antes `bg-brand-cream` no generaba ninguna clase y el color solo
+   funcionaba por el fondo del body. */
+@theme {
+  --color-brand-apricot: #e85d36;
+  --color-brand-apricot-dark: #c94a27;
+  --color-brand-apricot-soft: #fdf1ed;
+  --color-brand-cream: #faf8f5;
+  --color-brand-gold: #c9a227;
+  --color-brand-gold-soft: #e8d48b;
+  --color-brand-espresso: #3b241d;
+  --color-brand-sand: #efe6da;
+  --color-brand-ink: #1c1917;
+}
 
 @layer base {
   :root {
@@ -46,4 +64,46 @@
   left: -9999px;
   opacity: 0;
   pointer-events: none;
+}
+
+/* Animaciones usadas por los avisos y los modales. */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(18px); }
+  to { opacity: 1; transform: none; }
+}
+
+.animate-fadeIn {
+  /* Sin `both`: al terminar la animación el transform vuelve a `none` y no
+     crea un bloque contenedor que desplace los modales `fixed` (factura). */
+  animation: fadeIn 0.22s ease-out;
+}
+
+.toast-in {
+  animation: toastIn 0.25s ease-out both;
+}
+
+/* Scroll discreto para modales largos (factura, abonos, importación). */
+.scrollbar-slim {
+  scrollbar-width: thin;
+  scrollbar-color: #d6d3d1 transparent;
+}
+.scrollbar-slim::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.scrollbar-slim::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-slim::-webkit-scrollbar-thumb {
+  background-color: #d6d3d1;
+  border: 2px solid #ffffff;
+  border-radius: 9999px;
+}
+.scrollbar-slim::-webkit-scrollbar-thumb:hover {
+  background-color: #a8a29e;
 }

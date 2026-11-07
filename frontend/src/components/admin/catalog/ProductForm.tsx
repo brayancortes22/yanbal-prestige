@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Check, X, AlertTriangle } from 'lucide-react';
 import type { MediaItem, Product } from '../../../types';
 import { MediaUploader } from '../../media/MediaUploader';
+import { ProductPdpFields } from './ProductPdpFields';
 
 const CATEGORY_LABELS: Record<Product['category'], string> = {
   rostro: 'Tratamiento Facial',
@@ -36,11 +37,24 @@ export const ProductForm: React.FC<Props> = ({ product, defaultCode, onSave, onC
         ? [{ id: 'cover', url: product.image, type: 'image', alt: product.name }]
         : []
   );
+
+  // Campos PDP Editables
+  const [botanicalTitle, setBotanicalTitle] = useState(product?.botanicalTitle ?? 'Fórmula Botánica');
+  const [botanicalDesc, setBotanicalDesc] = useState(product?.botanicalDesc ?? 'Ingredientes activos puros');
+  const [warrantyTitle, setWarrantyTitle] = useState(product?.warrantyTitle ?? '100% Original Yanbal');
+  const [warrantyDesc, setWarrantyDesc] = useState(product?.warrantyDesc ?? 'Garantía oficial de fábrica');
+  const [usageStepsText, setUsageStepsText] = useState((product?.usageSteps ?? [
+    'Paso 1: Limpia tu rostro en la mañana y en la noche con gel o espuma suave.',
+    'Paso 2: Aplica de 2 a 3 gotas en pómulos, frente y cuello.',
+    'Paso 3: Realiza masajes ascendentes desde el centro hacia afuera hasta su absorción completa.'
+  ]).join('\n'));
+  const [consultantTip, setConsultantTip] = useState(product?.consultantTip ?? 'Aplica antes de tu crema hidratante y nunca olvides tu protector solar de día.');
+  const [commitmentText, setCommitmentText] = useState(product?.commitmentText ?? 'Fórmulas no testeadas en animales (Cruelty-Free), hipoalergénicas y enriquecidas con extractos botánicos de la biodiversidad andina.');
+
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
-
     if (!name.trim() || !code.trim()) {
       setError('El código SKU y el nombre son obligatorios.');
       return;
@@ -51,6 +65,7 @@ export const ProductForm: React.FC<Props> = ({ product, defaultCode, onSave, onC
     }
 
     const cover = media.find((item) => item.type === 'image')?.url || product?.image || FALLBACK_IMAGE;
+    const parsedSteps = usageStepsText.split('\n').map((s) => s.trim()).filter(Boolean);
 
     onSave({
       id: product?.id ?? `prod-${Date.now()}`,
@@ -65,30 +80,25 @@ export const ProductForm: React.FC<Props> = ({ product, defaultCode, onSave, onC
       description: description.trim() || 'Producto oficial Yanbal Prestige de alta cosmética botánica.',
       isTop: product?.isTop,
       badge: badge.trim() || undefined,
-      usageSteps: product?.usageSteps ?? [
-        'Paso 1: Aplicar sobre piel limpia.',
-        'Paso 2: Masajear suavemente hasta su absorción.',
-      ],
-      consultantTip:
-        product?.consultantTip ?? 'Uso continuo recomendado para resultados óptimos.',
+      usageSteps: parsedSteps.length > 0 ? parsedSteps : ['Paso 1: Aplicar sobre piel limpia.'],
+      consultantTip: consultantTip.trim(),
+      botanicalTitle: botanicalTitle.trim(),
+      botanicalDesc: botanicalDesc.trim(),
+      warrantyTitle: warrantyTitle.trim(),
+      warrantyDesc: warrantyDesc.trim(),
+      commitmentTitle: 'Compromiso Yanbal Prestige',
+      commitmentText: commitmentText.trim(),
       active: product?.active ?? true,
     });
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="bg-white p-6 rounded-3xl border border-orange-200 shadow-sm space-y-4"
-    >
+    <form onSubmit={handleSubmit} className="bg-white p-6 rounded-3xl border border-orange-200 shadow-sm space-y-4">
       <div className="flex items-center justify-between border-b border-stone-100 pb-2">
         <h3 className="font-editorial text-base font-bold text-stone-900">
           {product ? 'Editar Referencia de Catálogo' : 'Dar de Alta Nuevo Producto'}
         </h3>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="text-stone-400 hover:text-stone-700 cursor-pointer"
-        >
+        <button type="button" onClick={onCancel} className="text-stone-400 hover:text-stone-700 cursor-pointer">
           <X className="w-4 h-4" />
         </button>
       </div>
@@ -99,7 +109,7 @@ export const ProductForm: React.FC<Props> = ({ product, defaultCode, onSave, onC
           required
           placeholder="Código SKU (ej: REF-2145)"
           value={code}
-          onChange={(event) => setCode(event.target.value)}
+          onChange={(e) => setCode(e.target.value)}
           className="p-2.5 text-xs rounded-xl border border-stone-200 bg-stone-50/50 font-mono font-bold text-amber-800"
         />
         <input
@@ -107,7 +117,7 @@ export const ProductForm: React.FC<Props> = ({ product, defaultCode, onSave, onC
           required
           placeholder="Nombre del producto"
           value={name}
-          onChange={(event) => setName(event.target.value)}
+          onChange={(e) => setName(e.target.value)}
           className="p-2.5 text-xs rounded-xl border border-stone-200 bg-stone-50/50"
         />
         <input
@@ -116,7 +126,7 @@ export const ProductForm: React.FC<Props> = ({ product, defaultCode, onSave, onC
           min={1}
           placeholder="Precio COP"
           value={price}
-          onChange={(event) => setPrice(Number(event.target.value))}
+          onChange={(e) => setPrice(Number(e.target.value))}
           className="p-2.5 text-xs rounded-xl border border-stone-200 bg-stone-50/50"
         />
         <input
@@ -124,9 +134,7 @@ export const ProductForm: React.FC<Props> = ({ product, defaultCode, onSave, onC
           min={0}
           placeholder="Precio anterior (opcional)"
           value={originalPrice ?? ''}
-          onChange={(event) =>
-            setOriginalPrice(event.target.value ? Number(event.target.value) : undefined)
-          }
+          onChange={(e) => setOriginalPrice(e.target.value ? Number(e.target.value) : undefined)}
           className="p-2.5 text-xs rounded-xl border border-stone-200 bg-stone-50/50"
         />
       </div>
@@ -134,7 +142,7 @@ export const ProductForm: React.FC<Props> = ({ product, defaultCode, onSave, onC
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <select
           value={category}
-          onChange={(event) => setCategory(event.target.value as Product['category'])}
+          onChange={(e) => setCategory(e.target.value as Product['category'])}
           className="p-2.5 text-xs rounded-xl border border-stone-200 bg-stone-50/50"
         >
           <option value="rostro">Rostro (Tratamiento)</option>
@@ -147,27 +155,38 @@ export const ProductForm: React.FC<Props> = ({ product, defaultCode, onSave, onC
           type="text"
           placeholder="Etiqueta destacada (opcional)"
           value={badge}
-          onChange={(event) => setBadge(event.target.value)}
+          onChange={(e) => setBadge(e.target.value)}
           className="p-2.5 text-xs rounded-xl border border-stone-200 bg-stone-50/50"
         />
         <input
           type="text"
-          placeholder="Descripción concisa del producto..."
+          placeholder="Descripción concisa..."
           value={description}
-          onChange={(event) => setDescription(event.target.value)}
+          onChange={(e) => setDescription(e.target.value)}
           className="p-2.5 text-xs rounded-xl border border-stone-200 bg-stone-50/50"
         />
       </div>
 
       <div className="p-3 rounded-2xl border border-stone-200 bg-stone-50/40">
-        <MediaUploader
-          media={media}
-          onChange={setMedia}
-          maxFiles={10}
-          label="Galería del producto"
-          hint="Fotos y videos. La primera foto se usa como portada."
-        />
+        <MediaUploader media={media} onChange={setMedia} maxFiles={10} label="Galería del producto" hint="Fotos y videos. La primera foto se usa como portada." />
       </div>
+
+      <ProductPdpFields
+        botanicalTitle={botanicalTitle}
+        setBotanicalTitle={setBotanicalTitle}
+        botanicalDesc={botanicalDesc}
+        setBotanicalDesc={setBotanicalDesc}
+        warrantyTitle={warrantyTitle}
+        setWarrantyTitle={setWarrantyTitle}
+        warrantyDesc={warrantyDesc}
+        setWarrantyDesc={setWarrantyDesc}
+        usageStepsText={usageStepsText}
+        setUsageStepsText={setUsageStepsText}
+        consultantTip={consultantTip}
+        setConsultantTip={setConsultantTip}
+        commitmentText={commitmentText}
+        setCommitmentText={setCommitmentText}
+      />
 
       {error && (
         <div className="flex items-start gap-2 p-2.5 rounded-xl bg-red-50 border border-red-200 text-[11px] text-red-700">
@@ -177,17 +196,10 @@ export const ProductForm: React.FC<Props> = ({ product, defaultCode, onSave, onC
       )}
 
       <div className="flex justify-end gap-2 pt-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="px-4 py-2 rounded-xl border border-stone-200 text-xs font-semibold text-stone-600 cursor-pointer"
-        >
+        <button type="button" onClick={onCancel} className="px-4 py-2 rounded-xl border border-stone-200 text-xs font-semibold text-stone-600 cursor-pointer">
           Cancelar
         </button>
-        <button
-          type="submit"
-          className="px-5 py-2 rounded-xl bg-stone-900 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm cursor-pointer"
-        >
+        <button type="submit" className="px-5 py-2 rounded-xl bg-stone-900 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm cursor-pointer">
           <Check className="w-3.5 h-3.5" />
           <span>Guardar Cambios</span>
         </button>

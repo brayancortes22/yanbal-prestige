@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 using YanbalPrestige.Api.Common.Security;
 using YanbalPrestige.Api.Entities;
 using YanbalPrestige.Api.Services.Interfaces;
@@ -21,6 +22,7 @@ public class TipsController : ControllerBase
     /// <summary>Listado público: solo consejos visibles.</summary>
     [HttpGet]
     [AllowAnonymous]
+    [OutputCache(PolicyName = "PublicCatalog")]
     public async Task<IActionResult> GetPublished() => Ok(await _tipService.GetActiveTipsAsync());
 
     /// <summary>Listado completo para el panel de administración.</summary>

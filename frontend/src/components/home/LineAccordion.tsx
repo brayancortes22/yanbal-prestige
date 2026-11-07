@@ -1,12 +1,47 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Flame } from 'lucide-react';
 import { useConfig } from '../../context/ConfigContext';
+import { formatCop } from '../../utils/payments';
 
 export const LineAccordion: React.FC = () => {
-  const { linesAccordion } = useConfig();
+  const { linesAccordion, products, orders } = useConfig();
   const [activeLineId, setActiveLineId] = useState<string>(linesAccordion[0]?.id || 'line-solar');
   const navigate = useNavigate();
+
+  const bestSellers = useMemo(() => {
+    const unitsByProduct = new Map<string, number>();
+    for (const order of orders) {
+      if (order.deliveryStatus === 'cancelado' || order.paymentStatus === 'anulada') continue;
+      for (const item of order.items) {
+        unitsByProduct.set(
+          item.productId,
+          (unitsByProduct.get(item.productId) || 0) + item.quantity
+        );
+      }
+    }
+
+    const map = new Map<string, (typeof products)[number] | undefined>();
+    for (const line of linesAccordion) {
+      const categoryProducts = products.filter(
+        (product) => product.active && product.category === line.categoryFilter
+      );
+
+      if (line.pinnedProductId) {
+        map.set(
+          line.id,
+          products.find((product) => product.id === line.pinnedProductId)
+        );
+        continue;
+      }
+
+      const ranked = [...categoryProducts].sort(
+        (a, b) => (unitsByProduct.get(b.id) || 0) - (unitsByProduct.get(a.id) || 0)
+      );
+      map.set(line.id, ranked[0]);
+    }
+    return map;
+  }, [linesAccordion, products, orders]);
 
   const handleExplore = (category: string) => {
     navigate(`/catalogo?cat=${category}`);
@@ -74,6 +109,36 @@ export const LineAccordion: React.FC = () => {
                           </span>
                         ))}
                       </div>
+                      {bestSellers.get(line.id) && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/producto/${bestSellers.get(line.id)!.id}`);
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }}
+                          className="flex w-full max-w-md items-center gap-3 rounded-2xl border border-white/15 bg-white/10 p-2.5 text-left backdrop-blur-md transition-colors hover:bg-white/20"
+                        >
+                          <img
+                            src={bestSellers.get(line.id)!.image}
+                            alt={bestSellers.get(line.id)!.name}
+                            className="h-12 w-12 shrink-0 rounded-xl object-cover"
+                          />
+                          <span className="min-w-0 flex-1">
+                            <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-orange-300">
+                              <Flame className="h-3 w-3" />
+                              {line.pinnedProductId ? 'Destacado de la línea' : 'El más vendido'}
+                            </span>
+                            <span className="block truncate text-xs font-semibold text-white">
+                              {bestSellers.get(line.id)!.name}
+                            </span>
+                            <span className="text-[10px] text-stone-300">
+                              {formatCop(bestSellers.get(line.id)!.price)}
+                            </span>
+                          </span>
+                          <ArrowRight className="h-4 w-4 shrink-0 text-orange-300" />
+                        </button>
+                      )}
                       <div className="pt-2">
                         <button
                           onClick={(e) => {

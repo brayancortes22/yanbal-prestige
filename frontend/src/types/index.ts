@@ -19,7 +19,13 @@ export interface MediaItem {
   fileName?: string;
 }
 
-export type UserRole = 'SUPER_ADMIN' | 'DIRECTORA' | 'LIDER_ZONA' | 'CONSULTORA';
+export type UserRole =
+  | 'SUPER_ADMIN'
+  | 'DIRECTORA'
+  | 'ASISTENTE'
+  | 'LIDER_ZONA'
+  | 'CONSULTORA'
+  | 'CLIENTE';
 
 export interface AppUser {
   id: string;
@@ -30,12 +36,22 @@ export interface AppUser {
   phone: string;
   zone: string;
   active: boolean;
+  /** Líder de zona al que reporta una consultora (jerarquía de la red). */
+  leaderId?: string;
 }
 
 export interface ConsultantClient {
   id: string;
+  /** Consultora dueña de la ficha (CRM separado por vendedora). */
+  consultantId?: string;
   name: string;
   phone: string;
+  email?: string;
+  documentId?: string;
+  address?: string;
+  neighborhood?: string;
+  postalCode?: string;
+  city?: string;
   skinType: 'Normal' | 'Grasa' | 'Mixta' | 'Seca' | 'Sensible';
   favoriteCategory: 'Tratamiento Facial' | 'Perfumería' | 'Protección Solar' | 'Maquillaje' | 'Joyería Fina';
   notes: string;
@@ -65,6 +81,23 @@ export interface AboutContentConfig {
   updatedAt: string;
 }
 
+export interface JoinContentConfig {
+  tag: string;
+  title: string;
+  subtitle: string;
+  consultantBadge: string;
+  consultantTitle: string;
+  consultantDesc: string;
+  consultantBenefits: string[];
+  consultantButtonText: string;
+  directorBadge: string;
+  directorTitle: string;
+  directorDesc: string;
+  directorBenefits: string[];
+  directorButtonText: string;
+  updatedAt: string;
+}
+
 export interface HeroSlide {
   id: string;
   title: string;
@@ -90,6 +123,7 @@ export interface VideoTipItem {
   title: string;
   duration: string;
   image: string;
+  videoUrl?: string;
   description: string;
   active: boolean;
 }
@@ -144,7 +178,75 @@ export interface Product {
   badge?: string;
   usageSteps: string[];
   consultantTip: string;
+  botanicalTitle?: string;
+  botanicalDesc?: string;
+  warrantyTitle?: string;
+  warrantyDesc?: string;
+  commitmentTitle?: string;
+  commitmentText?: string;
   active: boolean; // Estado: true (En Catálogo) o false (Agotado/Pausado)
+}
+
+export type PaymentStatus = 'pendiente' | 'abono' | 'pagado' | 'anulada';
+export type DeliveryStatus = 'preparacion' | 'camino' | 'entregado' | 'cancelado';
+export type OrderSource = 'web_catalogo' | 'venta_directa';
+export type PaymentMethod =
+  | 'efectivo'
+  | 'transferencia'
+  | 'nequi'
+  | 'daviplata'
+  | 'tarjeta'
+  | 'otro'
+  | 'reembolso';
+
+/**
+ * Movimiento de pago de un pedido. Permite registrar el abono real
+ * (monto, método y fecha) en lugar de guardar solo la etiqueta "abono"
+ * sin saber cuánto dinero entregó la clienta.
+ */
+export interface PaymentRecord {
+  id: string;
+  amount: number;
+  method: PaymentMethod;
+  note?: string;
+  date: string;
+}
+
+export interface OrderItem {
+  productId: string;
+  productCode: string;
+  productName: string;
+  /** Foto usada en el carrito y la factura (URL o data URL). */
+  productImage?: string;
+  unitPrice: number;
+  quantity: number;
+  subtotal: number;
+}
+
+export interface Order {
+  id: string;
+  invoiceNumber: string; // ej. FAC-2026-001
+  clientId?: string;
+  clientName: string;
+  clientPhone: string;
+  clientCity: string;
+  clientAddress?: string;
+  clientEmail?: string;
+  clientDocumentId?: string;
+  clientNeighborhood?: string;
+  clientPostalCode?: string;
+  consultantId: string;
+  consultantName: string;
+  items: OrderItem[];
+  totalAmount: number;
+  paymentStatus: PaymentStatus;
+  deliveryStatus: DeliveryStatus;
+  source: OrderSource;
+  notes?: string;
+  /** Historial de pagos y abonos aplicados al pedido. */
+  payments?: PaymentRecord[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface CartItem {
@@ -160,6 +262,8 @@ export interface LineAccordionItem {
   image: string;
   claims: string[];
   categoryFilter: 'rostro' | 'perfumes' | 'maquillaje' | 'joyeria' | 'solar';
+  /** Producto fijado por la administradora; vacío = más vendido automático. */
+  pinnedProductId?: string;
 }
 
 export interface EventItem {
@@ -167,6 +271,9 @@ export interface EventItem {
   title: string;
   date: string;
   time: string;
+  /** Fecha/hora ISO de inicio y fin (para calendario y validación). */
+  startAt?: string;
+  endAt?: string;
   modality: 'Presencial' | 'Virtual Vía Zoom';
   location: string;
   image: string;
@@ -176,12 +283,43 @@ export interface EventItem {
   spots: string;
 }
 
+export interface LegalSection {
+  heading: string;
+  body: string[];
+}
+
+export interface LegalDocument {
+  tag: string;
+  title: string;
+  intro: string;
+  sections: LegalSection[];
+  updatedAt?: string;
+}
+
+export type LegalKind = 'terminos' | 'privacidad' | 'cookies' | 'devoluciones';
+export type LegalDocs = Record<LegalKind, LegalDocument>;
+
+export interface SiteFooterConfig {
+  whatsappUrl: string;
+  instagramUrl: string;
+  tiktokUrl: string;
+  contactEmail: string;
+  legalNote: string;
+  updatedAt?: string;
+}
+
 export interface LeadProspect {
+  id?: string;
   fullName: string;
   phone: string;
   city: string;
+  email?: string;
+  department?: string;
+  address?: string;
+  experience?: string;
   roleInterest: string;
   acceptedHabeasData: boolean;
+  createdAt?: string;
   trapField?: string;
   turnstileToken?: string;
 }

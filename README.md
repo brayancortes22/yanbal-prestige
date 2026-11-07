@@ -18,6 +18,58 @@ Desarrollado bajo la metodología **Ciclo Completo bscl**, estándar estético *
 
 ---
 
+## Novedades de la iteración actual
+
+- **Jerarquía de roles**: administradora, **asistente administrativa**
+  (catálogo, CMS, anuncios, prospectos y ventas), líder de zona (vende y tiene
+  trabajadoras a cargo) y consultora. Asignación de equipo desde
+  **Equipo & Roles**, con búsqueda por nombre o zona.
+- **Abonos editables**: cada pago guarda monto, método, nota y fecha; se puede
+  corregir o eliminar, registrar devoluciones y el estado del pedido se
+  recalcula solo. Las facturas canceladas quedan marcadas como **anuladas**.
+- **Búsqueda inteligente** de clientas, productos y líderes.
+- **Ficha de clienta completa**: correo, cédula, ciudad, barrio, dirección y
+  código postal; al vender se autocompletan y la factura puede enviarse por
+  correo.
+- **Plantilla Excel .xlsx** con dos hojas, imagen por **URL o pegada** (detecta
+  automáticamente) y vista previa con validación por fila.
+- **Registro de venta como página completa** con catálogo en tabla y fotos.
+- **Galería de producto estilo marketplace**: miniaturas laterales para cambiar
+  entre fotos y videos, con zoom y visor.
+- **Factura A4 limpia** para imprimir, guardar como PDF o enviar por correo.
+- **CMS con vista de ubicación**: cada pestaña indica en qué página y bloque se
+  verá, permite subir imágenes/videos y elegir el producto destacado de cada
+  línea (automático por más vendido o fijado por la administradora).
+- **Prospectos conectados al alta**: las postulaciones reales de “Trabaja con
+  nosotros” se pueden revisar y convertir en integrantes con los datos
+  precargados.
+- **Legal y pie de página editables**: términos, privacidad, cookies,
+  devoluciones y redes sociales se administran desde el CMS.
+- **Eventos con calendario**: fecha y rango de hora, sin permitir publicar en
+  fechas pasadas.
+- **Confirmaciones y notificaciones** en las acciones sensibles.
+- **Páginas legales**: Términos, Privacidad/Habeas Data, Cookies y
+  Devoluciones, enlazadas desde el pie de página.
+- **Datos desde MySQL por la API**: usuarios/roles, catálogo, clientas,
+  pedidos y abonos se leen y escriben en el backend; el JWT define el alcance.
+  El frontend pinta al instante desde `localStorage` y revalida en silencio
+  (al recuperar foco y cada 120 s), sin recargar la página.
+- **Medios optimizados en el VPS**: fotos a WebP ≤1920 px y videos a MP4
+  H.264 ≤1280 px; los archivos retirados o huérfanos se purgan.
+
+Detalle completo en
+[`docs/ROLES_PAGOS_BUSQUEDA_E_IMPORTACION.md`](docs/ROLES_PAGOS_BUSQUEDA_E_IMPORTACION.md).
+Estado de la conexión local en
+[`docs/CONEXION_BASE_DE_DATOS.md`](docs/CONEXION_BASE_DE_DATOS.md).
+Medios y limpieza del VPS en
+[`docs/MEDIOS_FOTOS_Y_VIDEOS.md`](docs/MEDIOS_FOTOS_Y_VIDEOS.md).
+Mejoras de CMS, clientes y devoluciones en
+[`docs/MEJORAS_UX_CMS_CLIENTES.md`](docs/MEJORAS_UX_CMS_CLIENTES.md).
+Resultados de las pruebas de interfaz en
+[`docs/PRUEBAS_UI_2026-11-07.md`](docs/PRUEBAS_UI_2026-11-07.md).
+
+---
+
 ## 🎯 Visión y Propósito del Proyecto
 
 El proyecto surge de la necesidad comercial de una Red de Consultoras y Directoras Independientes de Yanbal (liderado por la socia Yuli y su equipo) para:
