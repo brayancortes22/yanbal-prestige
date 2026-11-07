@@ -2,19 +2,36 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { BarChart3, Package, Megaphone, Users, UserCheck, LogOut, ShieldCheck, FileText, ShoppingBag } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useConfig } from '../../context/ConfigContext';
+
+const LEADERSHIP = ['DIRECTORA', 'SUPER_ADMIN'];
+// La asistente ayuda con catálogo, CMS, anuncios, prospectos y ventas.
+// Equipo & Roles queda reservado a la administradora.
+const CONTENT_ROLES = ['DIRECTORA', 'ASISTENTE', 'SUPER_ADMIN'];
+const TEAM_VIEW = ['DIRECTORA', 'ASISTENTE', 'SUPER_ADMIN'];
 
 export const AdminNav: React.FC = () => {
-  const { logout, username } = useAuth();
+  const { logout, username, role } = useAuth();
+  const { apiMode, apiLoading } = useConfig();
 
   const navItems = [
-    { to: '/admin', label: 'Métricas & KPIs', icon: BarChart3, end: true },
-    { to: '/admin/ventas', label: 'Ventas & Facturas', icon: ShoppingBag },
-    { to: '/admin/catalogo', label: 'Catálogo & SKU', icon: Package },
-    { to: '/admin/contenido', label: 'Contenido CMS', icon: FileText },
-    { to: '/admin/anuncios', label: 'Anuncios & Campaña', icon: Megaphone },
-    { to: '/admin/usuarios', label: 'Equipo & Roles', icon: Users },
-    { to: '/admin/prospectos', label: 'Prospectos Únete', icon: UserCheck },
-  ];
+    { to: '/admin', label: 'Métricas & KPIs', icon: BarChart3, end: true, roles: TEAM_VIEW },
+    { to: '/admin/ventas', label: 'Ventas & Facturas', icon: ShoppingBag, roles: TEAM_VIEW },
+    { to: '/admin/catalogo', label: 'Catálogo & SKU', icon: Package, roles: TEAM_VIEW },
+    { to: '/admin/contenido', label: 'Contenido CMS', icon: FileText, roles: CONTENT_ROLES },
+    { to: '/admin/anuncios', label: 'Anuncios & Campaña', icon: Megaphone, roles: CONTENT_ROLES },
+    { to: '/admin/usuarios', label: 'Equipo & Roles', icon: Users, roles: LEADERSHIP },
+    { to: '/admin/prospectos', label: 'Prospectos Únete', icon: UserCheck, roles: CONTENT_ROLES },
+  ].filter((item) => !role || item.roles.includes(role));
+
+  const roleLabel =
+    role === 'ASISTENTE'
+      ? 'Asistente administrativa'
+      : role === 'LIDER_ZONA'
+        ? 'Líder de zona'
+        : role === 'DIRECTORA'
+          ? 'Administradora'
+          : 'Invitada';
 
   // La cabecera institucional queda estática y solo la barra de pestañas se
   // pega bajo el header fijo (h-20). Antes todo el bloque se anclaba a
@@ -33,12 +50,29 @@ export const AdminNav: React.FC = () => {
                   <ShieldCheck className="h-3 w-3 text-emerald-600" />
                   <span>Sesión Segura (Auto-Logout 15m)</span>
                 </span>
+                <span
+                  className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
+                    apiMode
+                      ? 'border-sky-200 bg-sky-50 text-sky-700'
+                      : 'border-amber-200 bg-amber-50 text-amber-800'
+                  }`}
+                  title={
+                    apiMode
+                      ? 'Los datos se leen y escriben en MySQL mediante la API'
+                      : 'Datos locales de demostración: configura VITE_API_URL'
+                  }
+                >
+                  {apiMode ? 'MySQL · API' : 'Demo local'}
+                  {apiMode && apiLoading && (
+                    <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-current" />
+                  )}
+                </span>
               </div>
               <h1 className="font-editorial text-xl font-bold text-stone-900 sm:text-2xl">
                 Yanbal Prestige • Gerencia de Red
               </h1>
               <p className="text-xs text-stone-500">
-                Directora: <strong>{username || 'Yuli Cortés'}</strong> • Control del catálogo, avisos y equipo.
+                {roleLabel}: <strong>{username || 'Yuli Cortés'}</strong> • Control del catálogo, avisos y equipo.
               </p>
             </div>
 

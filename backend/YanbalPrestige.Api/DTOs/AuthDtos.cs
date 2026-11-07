@@ -60,6 +60,16 @@ public class UserDto
     public string Phone { get; set; } = string.Empty;
     public bool IsActive { get; set; }
 
+    [MaxLength(30)]
+    public string DocumentId { get; set; } = string.Empty;
+
+    [MaxLength(100)]
+    public string Zone { get; set; } = string.Empty;
+
+    /// <summary>Líder de zona asignado (solo aplica a consultoras).</summary>
+    [MaxLength(50)]
+    public string? LeaderId { get; set; }
+
     /// <summary>Opcional. Solo se usa al crear o cambiar la contraseña de un usuario.</summary>
     [StringLength(128, MinimumLength = 8)]
     public string? Password { get; set; }

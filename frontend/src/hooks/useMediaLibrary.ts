@@ -8,32 +8,39 @@ import {
   MAX_VIDEO_MB,
   releaseLocalMedia,
 } from '../components/media/mediaUtils';
+import { api, isApiConfigured } from '../services/api';
 
 type Accept = 'image' | 'video' | 'any';
 
 interface Options {
   accept?: Accept;
   maxFiles?: number;
+  /** Subcarpeta de /uploads donde se guardan los archivos. */
+  subFolder?: string;
 }
 
 /**
- * Gestiona una galería de fotos y videos en modo demostración.
- * Los archivos viven en la sesión del navegador (blob URLs) y los
- * enlaces externos sí quedan persistidos en el estado del CMS.
+ * Gestiona una galería de fotos y videos.
+ *
+ * - Con API configurada, cada archivo se sube al backend (que lo comprime a
+ *   WebP o MP4 H.264) y se guarda la URL absoluta del servidor.
+ * - Sin API, funciona en modo demostración con blob URLs que viven solo en
+ *   la sesión del navegador.
  */
 export function useMediaLibrary(
   media: MediaItem[],
   onChange: (next: MediaItem[]) => void,
-  { accept = 'any', maxFiles = 10 }: Options = {}
+  { accept = 'any', maxFiles = 10, subFolder = 'products' }: Options = {}
 ) {
   const [error, setError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   const addFiles = useCallback(
-    (fileList: FileList | File[]) => {
+    async (fileList: FileList | File[]) => {
       const files = Array.from(fileList);
       if (files.length === 0) return;
 
-      const accepted: MediaItem[] = [];
+      const accepted: { file: File; type: MediaItem['type'] }[] = [];
       const problems: string[] = [];
 
       files.forEach((file) => {
@@ -58,7 +65,7 @@ export function useMediaLibrary(
           return;
         }
 
-        accepted.push(createLocalMedia(file));
+        accepted.push({ file, type });
       });
 
       const room = maxFiles - media.length;
@@ -71,11 +78,42 @@ export function useMediaLibrary(
       }
 
       const toAdd = accepted.slice(0, Math.max(room, 0));
-      if (toAdd.length > 0) onChange([...media, ...toAdd]);
+      if (toAdd.length === 0) {
+        setError(problems.length > 0 ? problems.join(' ') : null);
+        return;
+      }
 
+      if (!isApiConfigured()) {
+        onChange([...media, ...toAdd.map((item) => createLocalMedia(item.file))]);
+        setError(problems.length > 0 ? problems.join(' ') : null);
+        return;
+      }
+
+      setUploading(true);
+      const uploaded: MediaItem[] = [];
+
+      for (const item of toAdd) {
+        try {
+          const result = await api.uploadMedia(item.file, subFolder);
+          uploaded.push({
+            id: `srv-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            url: result.absoluteUrl,
+            type: item.type,
+            alt: '',
+            fileName: item.file.name,
+          });
+        } catch (uploadError) {
+          const message =
+            uploadError instanceof Error ? uploadError.message : 'No se pudo subir el archivo.';
+          problems.push(`"${item.file.name}": ${message}`);
+        }
+      }
+
+      setUploading(false);
+      if (uploaded.length > 0) onChange([...media, ...uploaded]);
       setError(problems.length > 0 ? problems.join(' ') : null);
     },
-    [accept, maxFiles, media, onChange]
+    [accept, maxFiles, media, onChange, subFolder]
   );
 
   const addUrl = useCallback(
@@ -154,5 +192,14 @@ export function useMediaLibrary(
     [media, onChange]
   );
 
-  return { addFiles, addUrl, remove, move, setCover, error, clearError: () => setError(null) };
+  return {
+    addFiles,
+    addUrl,
+    remove,
+    move,
+    setCover,
+    uploading,
+    error,
+    clearError: () => setError(null),
+  };
 }

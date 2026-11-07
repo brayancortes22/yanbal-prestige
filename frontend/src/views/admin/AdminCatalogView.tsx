@@ -5,10 +5,14 @@ import { ProductForm } from '../../components/admin/catalog/ProductForm';
 import { ProductTable } from '../../components/admin/catalog/ProductTable';
 import { CatalogImportModal } from '../../components/admin/CatalogImportModal';
 import { useConfig } from '../../context/ConfigContext';
+import { useToast } from '../../components/ui/ToastProvider';
+import { useConfirm } from '../../components/ui/ConfirmProvider';
 import type { Product } from '../../types';
 
 export const AdminCatalogView: React.FC = () => {
   const { products, saveProduct, toggleProductActive, deleteProduct, bulkAddProducts } = useConfig();
+  const { notify } = useToast();
+  const confirm = useConfirm();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('todas');
   const [statusFilter, setStatusFilter] = useState<'todos' | 'activos' | 'pausados'>('todos');
@@ -43,9 +47,47 @@ export const AdminCatalogView: React.FC = () => {
   };
 
   const handleSave = (product: Product) => {
+    const isNew = !editingProduct;
     saveProduct(product);
     setIsFormOpen(false);
     setEditingProduct(null);
+    notify(
+      isNew
+        ? `La referencia ${product.code} se agregó al catálogo.`
+        : `La referencia ${product.code} se actualizó.`
+    );
+  };
+
+  const handleToggle = async (id: string) => {
+    const product = products.find((item) => item.id === id);
+    const accepted = await confirm({
+      title: product?.active ? '¿Pausar esta referencia?' : '¿Reactivar esta referencia?',
+      message: product?.active
+        ? `"${product.name}" dejará de mostrarse en el catálogo público, pero se conserva en el sistema.`
+        : `"${product?.name || 'La referencia'}" volverá a mostrarse en el catálogo público.`,
+      confirmText: product?.active ? 'Sí, pausar' : 'Sí, reactivar',
+    });
+    if (!accepted) return;
+
+    toggleProductActive(id);
+    notify(
+      product?.active
+        ? `${product.name} quedó pausado en el catálogo.`
+        : `${product?.name || 'La referencia'} volvió a estar activo.`,
+      'info'
+    );
+  };
+
+  const handleDelete = async (id: string, name: string) => {
+    const accepted = await confirm({
+      title: '¿Dar de baja esta referencia?',
+      message: `"${name}" se eliminará del catálogo y también se borrarán sus fotos y videos del servidor. Los pedidos históricos conservan su nombre y precio.`,
+      confirmText: 'Sí, eliminar',
+      tone: 'danger',
+    });
+    if (!accepted) return;
+    deleteProduct(id);
+    notify(`"${name}" fue eliminado del catálogo.`, 'info');
   };
 
   return (
@@ -141,12 +183,8 @@ export const AdminCatalogView: React.FC = () => {
         <ProductTable
           products={filteredProducts}
           onEdit={handleOpenEdit}
-          onToggle={toggleProductActive}
-          onDelete={(id, name) => {
-            if (confirm(`¿Deseas dar de baja definitivamente "${name}" del catálogo?`)) {
-              deleteProduct(id);
-            }
-          }}
+          onToggle={handleToggle}
+          onDelete={handleDelete}
         />
       </div>
 

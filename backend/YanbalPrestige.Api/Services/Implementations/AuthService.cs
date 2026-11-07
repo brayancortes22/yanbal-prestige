@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
+using YanbalPrestige.Api.Common.Enums;
 using YanbalPrestige.Api.Common.Security;
 using YanbalPrestige.Api.Data;
 using YanbalPrestige.Api.DTOs;
@@ -45,7 +46,10 @@ public class AuthService : IAuthService
                 Email = user.Email,
                 Role = user.Role,
                 Phone = user.Phone,
-                IsActive = user.IsActive
+                IsActive = user.IsActive,
+                DocumentId = user.DocumentId,
+                Zone = user.Zone,
+                LeaderId = user.LeaderId
             }
         };
     }
@@ -66,7 +70,9 @@ public class AuthService : IAuthService
         var resetRecord = new PasswordResetPin
         {
             UserId = user.Id,
-            PinCode = pin,
+            // El PIN nunca se guarda en claro: si filtran la tabla,
+            // el atacante no puede reutilizarlo para tomar la cuenta.
+            PinCode = PasswordHasher.Hash(pin),
             ExpiresAt = DateTime.UtcNow.AddMinutes(15),
             IsUsed = false,
             CreatedAt = DateTime.UtcNow
@@ -82,11 +88,15 @@ public class AuthService : IAuthService
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == request.Email.ToLower());
         if (user == null) return false;
 
-        var pinRecord = await _context.PasswordResetPins
-            .Where(p => p.UserId == user.Id && p.PinCode == request.PinCode && !p.IsUsed && p.ExpiresAt > DateTime.UtcNow)
+        // Los PIN se guardan hasheados: se traen los candidatos vigentes
+        // (máximo 5) y se verifica el hash en memoria.
+        var candidates = await _context.PasswordResetPins
+            .Where(p => p.UserId == user.Id && !p.IsUsed && p.ExpiresAt > DateTime.UtcNow)
             .OrderByDescending(p => p.CreatedAt)
-            .FirstOrDefaultAsync();
+            .Take(5)
+            .ToListAsync();
 
+        var pinRecord = candidates.FirstOrDefault(p => PasswordHasher.Verify(request.PinCode, p.PinCode));
         if (pinRecord == null) return false;
 
         if (!IsStrongEnough(request.NewPassword)) return false;
@@ -115,13 +125,25 @@ public class AuthService : IAuthService
                 Email = u.Email,
                 Role = u.Role,
                 Phone = u.Phone,
-                IsActive = u.IsActive
+                IsActive = u.IsActive,
+                DocumentId = u.DocumentId,
+                Zone = u.Zone,
+                LeaderId = u.LeaderId
             })
             .ToListAsync();
     }
 
     public async Task<UserDto> SaveUserAsync(UserDto dto)
     {
+        // Solo se acepta un líder real y activo; cualquier otra referencia
+        // se descarta para no dejar consultoras huérfanas o mal asignadas.
+        if (!string.IsNullOrWhiteSpace(dto.LeaderId))
+        {
+            var leader = await _context.Users.AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == dto.LeaderId && u.Role == UserRole.Leader && u.IsActive);
+            if (leader == null) dto.LeaderId = null;
+        }
+
         var user = await _context.Users.FindAsync(dto.Id);
         if (user == null)
         {
@@ -132,7 +154,10 @@ public class AuthService : IAuthService
                 Email = dto.Email,
                 Role = dto.Role,
                 Phone = dto.Phone,
+                DocumentId = dto.DocumentId,
+                Zone = dto.Zone,
                 IsActive = dto.IsActive,
+                LeaderId = dto.Role == UserRole.Consultant ? dto.LeaderId : null,
                 // Sin contraseña explícita la cuenta nace bloqueada:
                 // solo se activa con el flujo de recuperación por PIN.
                 PasswordHash = PasswordHasher.Hash(
@@ -148,7 +173,10 @@ public class AuthService : IAuthService
             user.Email = dto.Email;
             user.Role = dto.Role;
             user.Phone = dto.Phone;
+            user.DocumentId = dto.DocumentId;
+            user.Zone = dto.Zone;
             user.IsActive = dto.IsActive;
+            user.LeaderId = dto.Role == UserRole.Consultant ? dto.LeaderId : null;
             user.UpdatedAt = DateTime.UtcNow;
 
             if (!string.IsNullOrWhiteSpace(dto.Password))

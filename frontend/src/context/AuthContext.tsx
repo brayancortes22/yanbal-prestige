@@ -11,18 +11,28 @@ const STORAGE = {
 } as const;
 
 /** Convierte el rol del backend (`Director`, `Consultant`, `Client`) al rol de UI. */
-export const normalizeRole = (role?: string | null): UserRole => {
-  switch ((role || '').toLowerCase()) {
+export const normalizeRole = (role?: string | number | null): UserRole => {
+  switch (String(role ?? '').toLowerCase()) {
+    case '1':
     case 'director':
     case 'directora':
     case 'admin':
       return 'DIRECTORA';
+    case '5':
+    case 'assistant':
+    case 'asistente':
+    case 'asistente_administrativa':
+      return 'ASISTENTE';
+    case '2':
     case 'consultant':
     case 'consultora':
       return 'CONSULTORA';
+    case '3':
     case 'client':
     case 'cliente':
       return 'CLIENTE';
+    case '4':
+    case 'leader':
     case 'lider_zona':
     case 'lider':
       return 'LIDER_ZONA';
@@ -34,6 +44,7 @@ export const normalizeRole = (role?: string | null): UserRole => {
 interface AuthContextType {
   isAuthenticated: boolean;
   isDemoMode: boolean;
+  token: string | null;
   login: (token: string, username: string, role?: UserRole, email?: string, demo?: boolean) => void;
   loginWithApi: (email: string, password: string) => Promise<UserRole>;
   logout: () => void;
@@ -44,14 +55,34 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const decodeJwtPayload = (token: string): Record<string, unknown> | null => {
+  if (!token.includes('.')) return null;
+  try {
+    return JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+  } catch {
+    return null;
+  }
+};
+
 const isJwtExpired = (token: string): boolean => {
   if (!token.includes('.')) return false; // token de demostración
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
-    return typeof payload.exp === 'number' && payload.exp * 1000 <= Date.now();
-  } catch {
-    return true;
-  }
+  const payload = decodeJwtPayload(token);
+  return !payload || (typeof payload.exp === 'number' && payload.exp * 1000 <= Date.now());
+};
+
+/**
+ * El rol se toma del JWT firmado por el backend, no de un valor editable en
+ * localStorage. Cambiar `yanbal_auth_role` a mano ya no abre el panel: la API
+ * seguiría rechazando las operaciones, pero además la UI deja de creerle.
+ */
+const roleFromToken = (token: string): UserRole | null => {
+  const payload = decodeJwtPayload(token);
+  if (!payload) return null;
+  const raw =
+    payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] ??
+    payload.role ??
+    payload['role'];
+  return raw ? normalizeRole(raw as string | number) : null;
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -68,6 +99,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
   const [email, setEmail] = useState<string | null>(() => localStorage.getItem(STORAGE.email));
   const [role, setRole] = useState<UserRole | null>(() => {
+    const token = localStorage.getItem(STORAGE.token);
+    const fromToken = token ? roleFromToken(token) : null;
+    if (fromToken) return fromToken;
+
     const stored = localStorage.getItem(STORAGE.role);
     return stored ? normalizeRole(stored) : null;
   });
@@ -82,15 +117,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     newEmail: string = '',
     demo = false
   ) => {
+    // Si el backend emitió un JWT, su claim de rol manda sobre el valor
+    // que llegue por parámetro.
+    const effectiveRole = roleFromToken(newToken) || newRole;
+
     setToken(newToken);
     setUsername(newUsername);
-    setRole(newRole);
+    setRole(effectiveRole);
     setEmail(newEmail);
     setIsDemoMode(demo);
 
     localStorage.setItem(STORAGE.token, newToken);
     localStorage.setItem(STORAGE.user, newUsername);
-    localStorage.setItem(STORAGE.role, newRole);
+    localStorage.setItem(STORAGE.role, effectiveRole);
     localStorage.setItem(STORAGE.email, newEmail);
     localStorage.setItem(STORAGE.demo, String(demo));
   };
@@ -105,7 +144,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw new Error(response?.message || 'Credenciales incorrectas.');
     }
 
-    const uiRole = normalizeRole(response.user.role);
+    const uiRole = roleFromToken(response.token) || normalizeRole(response.user.role);
     login(response.token, response.user.fullName, uiRole, response.user.email, false);
     return uiRole;
   };
@@ -126,6 +165,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         isAuthenticated: !!token && !isJwtExpired(token),
         isDemoMode,
+        token,
         login,
         loginWithApi,
         logout,

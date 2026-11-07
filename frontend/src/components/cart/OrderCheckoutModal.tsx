@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, CheckCircle2, ShieldCheck, ArrowRight, Loader2 } from 'lucide-react';
 import type { CartItem, Order } from '../../types';
 import { useConfig } from '../../context/ConfigContext';
+import { PostalCodeField } from '../common/PostalCodeField';
 
 interface OrderCheckoutModalProps {
   isOpen: boolean;
@@ -18,11 +19,15 @@ export const OrderCheckoutModal: React.FC<OrderCheckoutModalProps> = ({
   totalPrice,
   onOrderSuccess,
 }) => {
-  const { saveOrder, users } = useConfig();
+  const { saveOrder, users, orders } = useConfig();
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [documentId, setDocumentId] = useState('');
   const [city, setCity] = useState('');
+  const [neighborhood, setNeighborhood] = useState('');
   const [address, setAddress] = useState('');
+  const [postalCode, setPostalCode] = useState('');
   const [acceptedHabeasData, setAcceptedHabeasData] = useState(false);
   const [trapField, setTrapField] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -55,8 +60,16 @@ export const OrderCheckoutModal: React.FC<OrderCheckoutModalProps> = ({
     setIsSubmitting(true);
 
     try {
-      const invoiceSeq = Math.floor(100 + Math.random() * 900);
-      const invoiceNumber = `FAC-2026-${invoiceSeq}`;
+      // Correlativo real: toma el mayor consecutivo del año y suma 1.
+      // Antes se usaba Math.random(), lo que podía repetir facturas.
+      const year = new Date().getFullYear();
+      const prefix = `FAC-${year}-`;
+      const lastSeq = orders.reduce((max, order) => {
+        if (!order.invoiceNumber?.startsWith(prefix)) return max;
+        const seq = Number.parseInt(order.invoiceNumber.slice(prefix.length), 10);
+        return Number.isFinite(seq) && seq > max ? seq : max;
+      }, 0);
+      const invoiceNumber = `${prefix}${String(lastSeq + 1).padStart(3, '0')}`;
 
       const newOrder: Order = {
         id: `ord-${Date.now()}`,
@@ -65,6 +78,10 @@ export const OrderCheckoutModal: React.FC<OrderCheckoutModalProps> = ({
         clientPhone: phone.trim(),
         clientCity: city.trim(),
         clientAddress: address.trim(),
+        clientEmail: email.trim(),
+        clientDocumentId: documentId.trim(),
+        clientNeighborhood: neighborhood.trim(),
+        clientPostalCode: postalCode.trim(),
         consultantId: defaultConsultant.id,
         consultantName: defaultConsultant.name,
         totalAmount: totalPrice,
@@ -83,17 +100,23 @@ export const OrderCheckoutModal: React.FC<OrderCheckoutModalProps> = ({
         })),
       };
 
-      saveOrder(newOrder);
-      setCompletedOrder(newOrder);
-      onOrderSuccess(newOrder);
+      // El backend es la fuente de verdad: usa la factura y los totales que
+      // devuelve la API, no los valores calculados por el navegador.
+      const saved = await saveOrder(newOrder);
+      if (!saved) {
+        alert('No se pudo registrar el pedido en el servidor. Inténtalo de nuevo.');
+        return;
+      }
+      setCompletedOrder(saved);
+      onOrderSuccess(saved);
 
       // 4. Formateo y apertura de WhatsApp con el pedido oficial
       const cleanPhone = phone.replace(/\D/g, '');
-      const itemsList = newOrder.items
+      const itemsList = saved.items
         .map((it) => `• ${it.quantity}x ${it.productName} (${it.productCode}) - $${it.subtotal.toLocaleString('es-CO')}`)
         .join('\n');
 
-      const msg = `👑 *YANBAL PRESTIGE - AUTOPEDIDO WEB*\n🧾 *N° Factura:* ${invoiceNumber}\n👤 *Cliente:* ${fullName.trim()} (${phone.trim()})\n📍 *Ciudad:* ${city.trim()}${address ? ' - ' + address.trim() : ''}\n\n📦 *Productos Solicitados:*\n${itemsList}\n\n💰 *TOTAL ESTIMADO: $${totalPrice.toLocaleString('es-CO')} COP*\n\nHola ${defaultConsultant.name}, he completado mi autopedido en el catálogo oficial. ¿Me ayudas a coordinar el pago y despacho? ✨`;
+      const msg = `👑 *YANBAL PRESTIGE - AUTOPEDIDO WEB*\n🧾 *N° Factura:* ${saved.invoiceNumber}\n👤 *Cliente:* ${fullName.trim()} (${phone.trim()})\n📧 *Correo:* ${email.trim() || 'No indicado'}\n📍 *Ciudad:* ${city.trim()}${neighborhood ? ' - Barrio ' + neighborhood.trim() : ''}${address ? ' - ' + address.trim() : ''}${postalCode ? ' - CP ' + postalCode.trim() : ''}\n\n📦 *Productos Solicitados:*\n${itemsList}\n\n💰 *TOTAL ESTIMADO: $${saved.totalAmount.toLocaleString('es-CO')} COP*\n\nHola ${defaultConsultant.name}, he completado mi autopedido en el catálogo oficial. ¿Me ayudas a coordinar el pago y despacho? ✨`;
 
       const targetWp = cleanPhone.length >= 10 ? cleanPhone : '573000000000';
       const wpUrl = `https://wa.me/${targetWp}?text=${encodeURIComponent(msg)}`;
@@ -178,6 +201,26 @@ export const OrderCheckoutModal: React.FC<OrderCheckoutModalProps> = ({
                 />
               </div>
               <div>
+                <label className="block text-stone-700 font-semibold mb-1">Correo para la factura</label>
+                <input
+                  type="email"
+                  placeholder="tucorreo@ejemplo.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl border border-stone-200 bg-stone-50/50 focus:border-orange-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-stone-700 font-semibold mb-1">Cédula / NIT (opcional)</label>
+                <input
+                  type="text"
+                  placeholder="Para la factura"
+                  value={documentId}
+                  onChange={(e) => setDocumentId(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl border border-stone-200 bg-stone-50/50 focus:border-orange-500 focus:outline-none"
+                />
+              </div>
+              <div>
                 <label className="block text-stone-700 font-semibold mb-1">Ciudad / Municipio *</label>
                 <input
                   type="text"
@@ -188,10 +231,29 @@ export const OrderCheckoutModal: React.FC<OrderCheckoutModalProps> = ({
                   className="w-full px-3.5 py-2 rounded-xl border border-stone-200 bg-stone-50/50 focus:border-orange-500 focus:outline-none"
                 />
               </div>
+              <div>
+                <label className="block text-stone-700 font-semibold mb-1">Barrio / Localidad</label>
+                <input
+                  type="text"
+                  placeholder="Ej. Chapinero"
+                  value={neighborhood}
+                  onChange={(e) => setNeighborhood(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl border border-stone-200 bg-stone-50/50 focus:border-orange-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-stone-700 font-semibold mb-1">Código postal</label>
+                <PostalCodeField
+                  value={postalCode}
+                  onChange={setPostalCode}
+                  className="px-3.5 py-2"
+                  placeholder="Ej. 110221"
+                />
+              </div>
             </div>
 
             <div>
-              <label className="block text-stone-700 font-semibold mb-1">Dirección de Despacho (Opcional)</label>
+              <label className="block text-stone-700 font-semibold mb-1">Dirección de Despacho</label>
               <input
                 type="text"
                 placeholder="Calle 127 # 15-42 Apto 402"
@@ -199,6 +261,9 @@ export const OrderCheckoutModal: React.FC<OrderCheckoutModalProps> = ({
                 onChange={(e) => setAddress(e.target.value)}
                 className="w-full px-3.5 py-2 rounded-xl border border-stone-200 bg-stone-50/50 focus:border-orange-500 focus:outline-none"
               />
+              <p className="mt-1 text-[10px] text-stone-400">
+                Usaremos el correo para enviarte la factura y el WhatsApp para coordinar la entrega.
+              </p>
             </div>
 
             {/* Resumen Total */}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Layers, Sparkles, BookOpen, Video, Calendar, FileText, Lightbulb, Briefcase } from 'lucide-react';
+import { Layers, Sparkles, BookOpen, Video, Calendar, FileText, Lightbulb, Briefcase, Scale, Share2 } from 'lucide-react';
 import { AdminNav } from '../../components/admin/AdminNav';
 import { CmsHeroSection } from '../../components/admin/cms/CmsHeroSection';
 import { CmsLinesSection } from '../../components/admin/cms/CmsLinesSection';
@@ -9,8 +9,87 @@ import { CmsEventsSection } from '../../components/admin/cms/CmsEventsSection';
 import { CmsTipsSection } from '../../components/admin/cms/CmsTipsSection';
 import { CmsAboutSection } from '../../components/admin/cms/CmsAboutSection';
 import { CmsJoinSection } from '../../components/admin/cms/CmsJoinSection';
+import { CmsLocationHint } from '../../components/admin/cms/CmsLocationHint';
+import { CmsLegalDocsSection } from '../../components/admin/cms/CmsLegalDocsSection';
+import { CmsFooterSection } from '../../components/admin/cms/CmsFooterSection';
 
-type CmsTab = 'hero' | 'lineas' | 'catalogo' | 'videos' | 'eventos' | 'tips' | 'quienes-somos' | 'unete';
+type CmsTab = 'hero' | 'lineas' | 'catalogo' | 'videos' | 'eventos' | 'tips' | 'quienes-somos' | 'unete' | 'legal' | 'footer';
+
+const SECTION_META: Record<
+  CmsTab,
+  { page: string; path: string; section: string; description: string; position: number }
+> = {
+  hero: {
+    page: 'Inicio',
+    path: '/',
+    section: 'Carrusel superior (primera pantalla)',
+    description: 'Es lo primero que ve la clienta al entrar. Ideal para lanzamientos y campañas.',
+    position: 1,
+  },
+  lineas: {
+    page: 'Inicio',
+    path: '/',
+    section: 'Líneas Emblemáticas Yanbal',
+    description: 'Bloque de colecciones que aparece después del carrusel y antes del catálogo.',
+    position: 2,
+  },
+  catalogo: {
+    page: 'Inicio',
+    path: '/',
+    section: 'Banner de catálogo digital',
+    description: 'Tarjeta de la revista de campaña que invita a recorrer el catálogo.',
+    position: 2,
+  },
+  videos: {
+    page: 'Inicio',
+    path: '/',
+    section: 'Últimos videos / tutoriales',
+    description: 'Galería de videos demostrativos que se muestra en la página de inicio.',
+    position: 3,
+  },
+  eventos: {
+    page: 'Eventos',
+    path: '/eventos',
+    section: 'Agenda de talleres y eventos',
+    description: 'Listado público de masterclasses presenciales y webinars.',
+    position: 2,
+  },
+  tips: {
+    page: 'Tips & Consejos',
+    path: '/tips',
+    section: 'Listado de artículos',
+    description: 'Consejos de cuidado, rutina y negocio que también se enlazan desde el inicio.',
+    position: 2,
+  },
+  'quienes-somos': {
+    page: 'Quiénes Somos',
+    path: '/quienes-somos',
+    section: 'Historia, misión y asesoría',
+    description: 'Textos institucionales de la página que presenta al equipo.',
+    position: 2,
+  },
+  unete: {
+    page: 'Trabaja con Nosotros',
+    path: '/unete',
+    section: 'Presentación de roles y formulario',
+    description: 'Tarjetas de Consultora/Líder y formulario de postulación.',
+    position: 2,
+  },
+  legal: {
+    page: 'Páginas legales',
+    path: '/terminos · /privacidad · /cookies · /devoluciones',
+    section: 'Términos, privacidad, cookies y devoluciones',
+    description: 'Documentos legales que se abren desde el pie de página.',
+    position: 3,
+  },
+  footer: {
+    page: 'Pie de página',
+    path: 'Todas las páginas',
+    section: 'Redes sociales, correo y aviso legal',
+    description: 'Iconos de WhatsApp, Instagram, TikTok, correo de contacto y aviso legal.',
+    position: 4,
+  },
+};
 
 export const AdminContentCMSView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<CmsTab>('hero');
@@ -24,6 +103,8 @@ export const AdminContentCMSView: React.FC = () => {
     { id: 'tips' as CmsTab, label: 'Tips & Consejos', icon: Lightbulb },
     { id: 'quienes-somos' as CmsTab, label: 'Quiénes Somos', icon: FileText },
     { id: 'unete' as CmsTab, label: 'Trabaja con Nosotros', icon: Briefcase },
+    { id: 'legal' as CmsTab, label: 'Legal', icon: Scale },
+    { id: 'footer' as CmsTab, label: 'Pie & Redes', icon: Share2 },
   ];
 
   return (
@@ -70,6 +151,8 @@ export const AdminContentCMSView: React.FC = () => {
         </div>
 
         {/* Panel de Contenido Dinámico */}
+        <CmsLocationHint {...SECTION_META[activeTab]} previewKey={activeTab} />
+
         <div className="bg-stone-50/60 p-6 sm:p-8 rounded-3xl border border-stone-200/60 shadow-xs">
           {activeTab === 'hero' && <CmsHeroSection />}
           {activeTab === 'lineas' && <CmsLinesSection />}
@@ -79,6 +162,8 @@ export const AdminContentCMSView: React.FC = () => {
           {activeTab === 'tips' && <CmsTipsSection />}
           {activeTab === 'quienes-somos' && <CmsAboutSection />}
           {activeTab === 'unete' && <CmsJoinSection />}
+          {activeTab === 'legal' && <CmsLegalDocsSection />}
+          {activeTab === 'footer' && <CmsFooterSection />}
         </div>
 
       </div>

@@ -10,6 +10,10 @@ public record OrderDto(
     string ClientPhone,
     string ClientCity,
     string ClientAddress,
+    string ClientEmail,
+    string ClientDocumentId,
+    string ClientNeighborhood,
+    string ClientPostalCode,
     string ConsultantId,
     string ConsultantName,
     decimal TotalAmount,
@@ -20,8 +24,17 @@ public record OrderDto(
     DateTime CreatedAt,
     DateTime UpdatedAt,
     List<OrderItemDto> Items,
+    List<PaymentDto> Payments,
     string? IdempotencyKey = null,
     bool AcceptedHabeasData = true
+);
+
+public record PaymentDto(
+    string Id,
+    decimal Amount,
+    string Method,
+    string? Note,
+    DateTime Date
 );
 
 public record OrderItemDto(
@@ -40,6 +53,10 @@ public record CreateOrderDto(
     [Required, MaxLength(30), RegularExpression(@"^[0-9+\s()-]{7,30}$", ErrorMessage = "Teléfono no válido.")] string ClientPhone,
     [Required, MaxLength(100)] string ClientCity,
     [MaxLength(200)] string ClientAddress,
+    [MaxLength(150)] string? ClientEmail,
+    [MaxLength(30)] string? ClientDocumentId,
+    [MaxLength(100)] string? ClientNeighborhood,
+    [MaxLength(20)] string? ClientPostalCode,
     [MaxLength(50)] string? ClientId,
     [Required, MaxLength(50)] string ConsultantId,
     [Required, MaxLength(150)] string ConsultantName,
@@ -49,7 +66,15 @@ public record CreateOrderDto(
     [Required, MinLength(1, ErrorMessage = "La orden debe contener al menos un producto."), MaxLength(50)]
     List<CreateOrderItemDto> Items,
     bool AcceptedHabeasData = false,
-    string? TrapField = null
+    string? TrapField = null,
+    List<CreatePaymentDto>? Payments = null
+);
+
+public record CreatePaymentDto(
+    decimal Amount,
+    [Required, MaxLength(30)] string Method,
+    [MaxLength(100)] string? Note,
+    DateTime? Date = null
 );
 
 public record CreateOrderItemDto(

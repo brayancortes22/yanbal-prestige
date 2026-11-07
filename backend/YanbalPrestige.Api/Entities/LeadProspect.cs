@@ -23,6 +23,22 @@ public class LeadProspect
     [Required, MaxLength(100)]
     public string City { get; set; } = string.Empty;
 
+    [Column("correo")]
+    [MaxLength(150)]
+    public string Email { get; set; } = string.Empty;
+
+    [Column("departamento")]
+    [MaxLength(100)]
+    public string Department { get; set; } = string.Empty;
+
+    [Column("direccion")]
+    [MaxLength(200)]
+    public string Address { get; set; } = string.Empty;
+
+    [Column("experiencia")]
+    [MaxLength(500)]
+    public string Experience { get; set; } = string.Empty;
+
     [Column("rol_interes")]
     [Required, MaxLength(50)]
     public string RoleInterest { get; set; } = "consultora";

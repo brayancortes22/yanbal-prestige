@@ -123,11 +123,24 @@ export const JoinForm: React.FC<Props> = ({ initialRole = 'consultora', onBack, 
             type="tel"
             required
             maxLength={30}
-            pattern="[0-9+()\-\s]{7,30}"
+            pattern="[0-9+()\s-]{7,30}"
             autoComplete="tel"
             placeholder="310 123 4567"
             value={formData.phone}
             onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+            className="w-full px-3.5 py-2 rounded-xl border border-stone-200 focus:border-orange-500 focus:outline-none text-xs bg-stone-50/50"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-stone-700 mb-1">Correo electrónico *</label>
+          <input
+            type="email"
+            required
+            maxLength={150}
+            autoComplete="email"
+            placeholder="tucorreo@ejemplo.com"
+            value={formData.email || ''}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
             className="w-full px-3.5 py-2 rounded-xl border border-stone-200 focus:border-orange-500 focus:outline-none text-xs bg-stone-50/50"
           />
         </div>
@@ -144,6 +157,45 @@ export const JoinForm: React.FC<Props> = ({ initialRole = 'consultora', onBack, 
             className="w-full px-3.5 py-2 rounded-xl border border-stone-200 focus:border-orange-500 focus:outline-none text-xs bg-stone-50/50"
           />
         </div>
+        <div>
+          <label className="block text-xs font-semibold text-stone-700 mb-1">Departamento</label>
+          <input
+            type="text"
+            maxLength={100}
+            autoComplete="address-level1"
+            placeholder="Ej. Huila"
+            value={formData.department || ''}
+            onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+            className="w-full px-3.5 py-2 rounded-xl border border-stone-200 focus:border-orange-500 focus:outline-none text-xs bg-stone-50/50"
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-xs font-semibold text-stone-700 mb-1">Dirección / Barrio</label>
+        <input
+          type="text"
+          maxLength={200}
+          autoComplete="street-address"
+          placeholder="Calle 10 # 5-23, barrio Centro"
+          value={formData.address || ''}
+          onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+          className="w-full px-3.5 py-2 rounded-xl border border-stone-200 focus:border-orange-500 focus:outline-none text-xs bg-stone-50/50"
+        />
+      </div>
+
+      <div>
+        <label className="block text-xs font-semibold text-stone-700 mb-1">
+          Cuéntanos tu experiencia (opcional)
+        </label>
+        <textarea
+          rows={3}
+          maxLength={500}
+          placeholder="¿Has vendido antes? ¿Qué te motiva a unirte? ¿Tienes disponibilidad de tiempo?"
+          value={formData.experience || ''}
+          onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
+          className="w-full px-3.5 py-2 rounded-xl border border-stone-200 focus:border-orange-500 focus:outline-none text-xs bg-stone-50/50"
+        />
       </div>
 
       <div>

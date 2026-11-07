@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using YanbalPrestige.Api.Common.Enums;
 using YanbalPrestige.Api.Common.Security;
 using YanbalPrestige.Api.Data;
 using YanbalPrestige.Api.DTOs;
@@ -22,6 +23,12 @@ public class OrdersController : ControllerBase
     private static readonly HashSet<string> AllowedDeliveryStatuses =
         new(StringComparer.OrdinalIgnoreCase) { "preparacion", "camino", "entregado", "cancelado" };
 
+    private static readonly HashSet<string> AllowedPaymentMethods =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            "efectivo", "transferencia", "nequi", "daviplata", "tarjeta", "otro", "reembolso"
+        };
+
     private readonly AppDbContext _db;
 
     public OrdersController(AppDbContext db) => _db = db;
@@ -31,17 +38,94 @@ public class OrdersController : ControllerBase
 
     private bool IsDirector => User.IsInRole(AuthRoles.Director);
 
+    /// <summary>La asistente administrativa también supervisa las ventas.</summary>
+    private bool IsAdmin => IsDirector || User.IsInRole(AuthRoles.Assistant);
+
+    private bool IsLeader => User.IsInRole(AuthRoles.Leader);
+
+    /// <summary>Ids de las consultoras que reportan al líder autenticado.</summary>
+    private async Task<List<string>> GetTeamIdsAsync()
+    {
+        var leaderId = CurrentUserId;
+        return await _db.Users.AsNoTracking()
+            .Where(u => u.LeaderId == leaderId)
+            .Select(u => u.Id)
+            .ToListAsync();
+    }
+
+    /// <summary>
+    /// Valida si el usuario actual puede operar sobre un pedido.
+    /// Directora: todo. Líder: su equipo. Consultora: solo lo propio.
+    /// </summary>
+    private async Task<bool> CanAccessOrderAsync(Order order)
+    {
+        if (IsAdmin) return true;
+        if (order.ConsultantId == CurrentUserId) return true;
+        if (!IsLeader) return false;
+
+        var teamIds = await GetTeamIdsAsync();
+        return teamIds.Contains(order.ConsultantId);
+    }
+
+    /// <summary>
+    /// Decide a quién pertenece la venta. Una consultora/líder solo puede
+    /// vender a su propio nombre; la administración puede asignar; el
+    /// autopedido público usa la consultora activa por defecto.
+    /// </summary>
+    private async Task<User?> ResolveConsultantAsync(CreateOrderDto dto)
+    {
+        if (User.IsInRole(AuthRoles.Consultant) || User.IsInRole(AuthRoles.Leader))
+        {
+            return await _db.Users.AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == CurrentUserId && u.IsActive);
+        }
+
+        if (IsAdmin && !string.IsNullOrWhiteSpace(dto.ConsultantId))
+        {
+            var chosen = await _db.Users.AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == dto.ConsultantId && u.IsActive &&
+                    (u.Role == UserRole.Consultant ||
+                     u.Role == UserRole.Leader ||
+                     u.Role == UserRole.Director));
+            if (chosen != null) return chosen;
+        }
+
+        if (IsAdmin) return null;
+
+        // Autopedido público: sin sesión, la primera consultora activa.
+        return await _db.Users.AsNoTracking()
+            .Where(u => u.IsActive && u.Role == UserRole.Consultant)
+            .OrderBy(u => u.FullName)
+            .FirstOrDefaultAsync();
+    }
+
     [HttpGet]
-    [Authorize(Roles = $"{AuthRoles.Director},{AuthRoles.Consultant}")]
+    [Authorize(Roles = $"{AuthRoles.Director},{AuthRoles.Assistant},{AuthRoles.Leader},{AuthRoles.Consultant}")]
     public async Task<IActionResult> GetAll([FromQuery] OrderFilterDto filter)
     {
-        var q = _db.Orders.AsNoTracking().Include(o => o.Items).AsQueryable();
+        var q = _db.Orders.AsNoTracking()
+            .Include(o => o.Items)
+            .Include(o => o.Payments)
+            .AsSplitQuery()
+            .AsQueryable();
 
-        // Una consultora solo ve su propia cartera; el filtro del cliente
-        // no puede ampliar el alcance (BOLA / IDOR).
-        var consultantId = IsDirector ? filter.ConsultantId : CurrentUserId;
-        if (!string.IsNullOrWhiteSpace(consultantId))
-            q = q.Where(o => o.ConsultantId == consultantId);
+        // Una consultora solo ve su propia cartera; un líder ve su equipo.
+        // El filtro del cliente no puede ampliar el alcance (BOLA / IDOR).
+        if (IsAdmin)
+        {
+            if (!string.IsNullOrWhiteSpace(filter.ConsultantId))
+                q = q.Where(o => o.ConsultantId == filter.ConsultantId);
+        }
+        else if (IsLeader)
+        {
+            var teamIds = await GetTeamIdsAsync();
+            teamIds.Add(CurrentUserId);
+            q = q.Where(o => teamIds.Contains(o.ConsultantId));
+        }
+        else
+        {
+            q = q.Where(o => o.ConsultantId == CurrentUserId);
+        }
         if (!string.IsNullOrWhiteSpace(filter.PaymentStatus))
             q = q.Where(o => o.PaymentStatus == filter.PaymentStatus);
         if (!string.IsNullOrWhiteSpace(filter.DeliveryStatus))
@@ -60,14 +144,17 @@ public class OrdersController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    [Authorize(Roles = $"{AuthRoles.Director},{AuthRoles.Consultant}")]
+    [Authorize(Roles = $"{AuthRoles.Director},{AuthRoles.Assistant},{AuthRoles.Leader},{AuthRoles.Consultant}")]
     public async Task<IActionResult> GetById(string id)
     {
-        var order = await _db.Orders.AsNoTracking().Include(o => o.Items)
+        var order = await _db.Orders.AsNoTracking()
+            .Include(o => o.Items)
+            .Include(o => o.Payments)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(o => o.Id == id);
 
         if (order == null) return NotFound(new { message = "Orden no encontrada." });
-        if (!IsDirector && order.ConsultantId != CurrentUserId)
+        if (!await CanAccessOrderAsync(order))
             return NotFound(new { message = "Orden no encontrada." });
 
         return Ok(MapToDto(order));
@@ -127,6 +214,10 @@ public class OrdersController : ControllerBase
             ? "web_catalogo"
             : "venta_directa";
 
+        var consultant = await ResolveConsultantAsync(dto);
+        if (consultant == null)
+            return BadRequest(new { message = "La consultora asignada no es válida o está inactiva." });
+
         var order = new Order
         {
             ClientId = dto.ClientId,
@@ -134,8 +225,12 @@ public class OrdersController : ControllerBase
             ClientPhone = dto.ClientPhone.Trim(),
             ClientCity = dto.ClientCity.Trim(),
             ClientAddress = dto.ClientAddress?.Trim() ?? string.Empty,
-            ConsultantId = dto.ConsultantId,
-            ConsultantName = dto.ConsultantName,
+            ClientEmail = dto.ClientEmail?.Trim() ?? string.Empty,
+            ClientDocumentId = dto.ClientDocumentId?.Trim() ?? string.Empty,
+            ClientNeighborhood = dto.ClientNeighborhood?.Trim() ?? string.Empty,
+            ClientPostalCode = dto.ClientPostalCode?.Trim() ?? string.Empty,
+            ConsultantId = consultant.Id,
+            ConsultantName = consultant.FullName,
             Source = source,
             Notes = dto.Notes,
             IdempotencyKey = key,
@@ -143,6 +238,34 @@ public class OrdersController : ControllerBase
             Items = orderItems
         };
         order.TotalAmount = order.Items.Sum(i => i.Subtotal);
+
+        var requestedPayments = dto.Payments ?? new List<CreatePaymentDto>();
+        if (requestedPayments.Count > 20)
+            return BadRequest(new { message = "Un pedido no puede tener más de 20 movimientos de pago." });
+
+        foreach (var payment in requestedPayments)
+        {
+            if (!AllowedPaymentMethods.Contains(payment.Method))
+                return BadRequest(new { message = $"Método de pago no válido: {payment.Method}." });
+            if (payment.Amount <= 0)
+                return BadRequest(new { message = "Cada pago inicial debe tener un monto mayor a cero." });
+        }
+
+        var paidAmount = requestedPayments.Sum(p => p.Amount);
+        if (paidAmount > order.TotalAmount + 0.01m)
+            return BadRequest(new { message = "La suma de los pagos supera el total del pedido." });
+
+        order.Payments = requestedPayments.Select(p => new OrderPayment
+        {
+            Id = Guid.NewGuid().ToString(),
+            OrderId = order.Id,
+            Amount = p.Amount,
+            Method = p.Method.ToLowerInvariant(),
+            Note = p.Note,
+            RegisteredBy = string.IsNullOrWhiteSpace(CurrentUserId) ? null : CurrentUserId,
+            Date = p.Date ?? DateTime.UtcNow,
+        }).ToList();
+        order.PaymentStatus = DerivePaymentStatus(order.TotalAmount, paidAmount);
 
         // Serializa la generación del correlativo dentro de la instancia para
         // evitar dos facturas con el mismo número bajo clics simultáneos.
@@ -162,20 +285,19 @@ public class OrdersController : ControllerBase
     }
 
     [HttpPatch("{id}/status")]
-    [Authorize(Roles = $"{AuthRoles.Director},{AuthRoles.Consultant}")]
+    [Authorize(Roles = $"{AuthRoles.Director},{AuthRoles.Assistant},{AuthRoles.Leader},{AuthRoles.Consultant}")]
     public async Task<IActionResult> UpdateStatus(string id, [FromBody] UpdateOrderStatusDto dto)
     {
-        var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == id);
+        var order = await _db.Orders
+            .Include(o => o.Payments)
+            .FirstOrDefaultAsync(o => o.Id == id);
         if (order == null) return NotFound(new { message = "Orden no encontrada." });
-        if (!IsDirector && order.ConsultantId != CurrentUserId)
+        if (!await CanAccessOrderAsync(order))
             return NotFound(new { message = "Orden no encontrada." });
 
-        if (!string.IsNullOrWhiteSpace(dto.PaymentStatus))
-        {
-            if (!AllowedPaymentStatuses.Contains(dto.PaymentStatus))
-                return BadRequest(new { message = "Estado de pago no válido." });
-            order.PaymentStatus = dto.PaymentStatus.ToLowerInvariant();
-        }
+        if (!string.IsNullOrWhiteSpace(dto.PaymentStatus) &&
+            !AllowedPaymentStatuses.Contains(dto.PaymentStatus))
+            return BadRequest(new { message = "Estado de pago no válido." });
 
         if (!string.IsNullOrWhiteSpace(dto.DeliveryStatus))
         {
@@ -184,11 +306,89 @@ public class OrdersController : ControllerBase
             order.DeliveryStatus = dto.DeliveryStatus.ToLowerInvariant();
         }
 
+        var paid = order.Payments.Sum(p => p.Amount);
+        var derived = order.DeliveryStatus == "cancelado"
+            ? "anulada"
+            : DerivePaymentStatus(order.TotalAmount, paid);
+
+        if (!string.IsNullOrWhiteSpace(dto.PaymentStatus) &&
+            !string.Equals(dto.PaymentStatus, derived, StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(new
+            {
+                message = "El estado de pago se calcula desde los pagos y la anulación. Use el endpoint de pagos."
+            });
+        }
+
+        // Anular congela la factura; al reactivar la entrega se recalcula el
+        // estado real según el dinero que sigue registrado.
+        order.PaymentStatus = derived;
+
         if (dto.Notes != null) order.Notes = dto.Notes;
         order.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
         return Ok(new { success = true, order.Id, order.PaymentStatus, order.DeliveryStatus });
+    }
+
+    /// <summary>
+    /// Reemplaza el historial de pagos de un pedido. El frontend envía la
+    /// lista completa al registrar, editar o eliminar un abono.
+    /// </summary>
+    [HttpPut("{id}/payments")]
+    [Authorize(Roles = $"{AuthRoles.Director},{AuthRoles.Assistant},{AuthRoles.Leader},{AuthRoles.Consultant}")]
+    public async Task<IActionResult> UpdatePayments(string id, [FromBody] List<CreatePaymentDto> payments)
+    {
+        var order = await _db.Orders
+            .Include(o => o.Items)
+            .Include(o => o.Payments)
+            .AsSplitQuery()
+            .FirstOrDefaultAsync(o => o.Id == id);
+
+        if (order == null) return NotFound(new { message = "Orden no encontrada." });
+        if (!await CanAccessOrderAsync(order))
+            return NotFound(new { message = "Orden no encontrada." });
+
+        if (payments.Count > 20)
+            return BadRequest(new { message = "Un pedido no puede tener más de 20 movimientos de pago." });
+
+        foreach (var payment in payments)
+        {
+            var isRefund = string.Equals(payment.Method, "reembolso", StringComparison.OrdinalIgnoreCase);
+
+            if (isRefund && payment.Amount >= 0)
+                return BadRequest(new { message = "Un reembolso debe registrarse con monto negativo." });
+            if (!isRefund && payment.Amount <= 0)
+                return BadRequest(new { message = "Cada pago o abono debe tener un monto mayor a cero." });
+
+            if (!AllowedPaymentMethods.Contains(payment.Method))
+                return BadRequest(new { message = $"Método de pago no válido: {payment.Method}." });
+        }
+
+        var paidAmount = payments.Sum(p => p.Amount);
+        if (paidAmount > order.TotalAmount + 0.01m)
+            return BadRequest(new { message = "La suma de los pagos supera el total del pedido." });
+        if (paidAmount < 0)
+            return BadRequest(new { message = "Los reembolsos superan el dinero recibido en el pedido." });
+
+        _db.OrderPayments.RemoveRange(order.Payments);
+        order.Payments = payments.Select(p => new OrderPayment
+        {
+            Id = Guid.NewGuid().ToString(),
+            OrderId = order.Id,
+            Amount = p.Amount,
+            Method = p.Method.ToLowerInvariant(),
+            Note = p.Note,
+            RegisteredBy = string.IsNullOrWhiteSpace(CurrentUserId) ? null : CurrentUserId,
+            Date = p.Date ?? DateTime.UtcNow,
+        }).ToList();
+        order.PaymentStatus = order.DeliveryStatus == "cancelado"
+            ? "anulada"
+            : DerivePaymentStatus(order.TotalAmount, paidAmount);
+        order.UpdatedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync();
+        return Ok(MapToDto(order));
     }
 
     [HttpPatch("{id}/assign")]
@@ -223,13 +423,25 @@ public class OrdersController : ControllerBase
         return $"{prefix}{nextSeq:D4}";
     }
 
+    private static string DerivePaymentStatus(decimal total, decimal paid)
+    {
+        if (paid <= 0) return "pendiente";
+        if (paid + 0.01m >= total) return "pagado";
+        return "abono";
+    }
+
     private static OrderDto MapToDto(Order o) => new(
         o.Id, o.InvoiceNumber, o.ClientId, o.ClientName, o.ClientPhone, o.ClientCity, o.ClientAddress,
+        o.ClientEmail, o.ClientDocumentId, o.ClientNeighborhood, o.ClientPostalCode,
         o.ConsultantId, o.ConsultantName, o.TotalAmount, o.PaymentStatus, o.DeliveryStatus,
         o.Source, o.Notes, o.CreatedAt, o.UpdatedAt,
         o.Items.Select(i => new OrderItemDto(
             i.Id, i.OrderId, i.ProductId, i.ProductSku, i.ProductName, i.UnitPrice, i.Quantity, i.Subtotal
         )).ToList(),
+        o.Payments
+            .OrderBy(p => p.Date)
+            .Select(p => new PaymentDto(p.Id, p.Amount, p.Method, p.Note, p.Date))
+            .ToList(),
         o.IdempotencyKey, o.AcceptedHabeasData
     );
 }

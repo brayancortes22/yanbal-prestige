@@ -146,6 +146,7 @@ export const TipForm: React.FC<Props> = ({ tip, nextOrder, onSave, onCancel }) =
             onChange={setImageMedia}
             accept="image"
             maxFiles={1}
+            subFolder="tips"
             label="Imagen de portada"
             hint="Una sola foto, horizontal (1200 × 750 px ideal)"
             showAlt={false}
@@ -158,6 +159,7 @@ export const TipForm: React.FC<Props> = ({ tip, nextOrder, onSave, onCancel }) =
             onChange={setVideoMedia}
             accept="video"
             maxFiles={1}
+            subFolder="tips"
             label="Video del consejo (opcional)"
             hint="Archivo MP4/WebM o enlace de YouTube/Vimeo"
             showAlt={false}

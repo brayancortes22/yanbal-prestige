@@ -17,9 +17,14 @@ export const AdminDashboardView: React.FC = () => {
     onIdle: () => logout(),
   });
 
-  const totalSales = orders.reduce((acc, o) => acc + o.totalAmount, 0);
-  const averageTicket = orders.length > 0 ? Math.round(totalSales / orders.length) : 0;
-  const networkMembers = users.filter((u) => u.role !== 'DIRECTORA' && u.active).length;
+  const validOrders = orders.filter(
+    (o) => o.deliveryStatus !== 'cancelado' && o.paymentStatus !== 'anulada'
+  );
+  const totalSales = validOrders.reduce((acc, o) => acc + o.totalAmount, 0);
+  const averageTicket = validOrders.length > 0 ? Math.round(totalSales / validOrders.length) : 0;
+  const networkMembers = users.filter(
+    (u) => u.role === 'CONSULTORA' && u.active
+  ).length;
   const activeProducts = products.filter((p) => p.active !== false).length;
 
   return (
@@ -48,14 +53,14 @@ export const AdminDashboardView: React.FC = () => {
             Icon={DollarSign}
             label="Ventas Registradas"
             value={formatCop(totalSales)}
-            hint={orders.length > 0 ? `Ticket promedio ${formatCopCompact(averageTicket)}` : 'Sin facturas aún'}
+            hint={validOrders.length > 0 ? `Ticket promedio ${formatCopCompact(averageTicket)}` : 'Sin facturas aún'}
             tone="apricot"
           />
           <StatCard
             Icon={MessageCircle}
             label="Órdenes Totales"
-            value={`${orders.length} ${orders.length === 1 ? 'Factura' : 'Facturas'}`}
-            hint="Despachos y ventas directas"
+            value={`${validOrders.length} ${validOrders.length === 1 ? 'Factura' : 'Facturas'}`}
+            hint="Despachos y ventas directas (sin anuladas)"
             tone="espresso"
           />
           <StatCard

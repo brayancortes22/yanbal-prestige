@@ -14,11 +14,17 @@ namespace YanbalPrestige.Api.Controllers;
 public class CatalogController : ControllerBase
 {
     private readonly ICatalogService _catalogService;
+    private readonly IOutputCacheStore _cache;
 
-    public CatalogController(ICatalogService catalogService)
+    public CatalogController(ICatalogService catalogService, IOutputCacheStore cache)
     {
         _catalogService = catalogService;
+        _cache = cache;
     }
+
+    /// <summary>Invalida el catálogo público tras crear, editar o borrar.</summary>
+    private Task EvictCatalogAsync() =>
+        _cache.EvictByTagAsync("catalog", HttpContext.RequestAborted).AsTask();
 
     [HttpGet("products")]
     [AllowAnonymous]
@@ -41,9 +47,10 @@ public class CatalogController : ControllerBase
 
     [HttpPost("products")]
     [Authorize(Roles = AuthRoles.ContentManagers)]
-    public async Task<IActionResult> SaveProduct([FromBody] Product product)
+    public async Task<IActionResult> SaveProduct([FromBody] ProductCreateUpdateDto product)
     {
         var saved = await _catalogService.SaveProductAsync(product);
+        await EvictCatalogAsync();
         return Ok(saved);
     }
 
@@ -53,6 +60,7 @@ public class CatalogController : ControllerBase
     {
         var success = await _catalogService.ToggleProductStatusAsync(id);
         if (!success) return NotFound();
+        await EvictCatalogAsync();
         return Ok(new { success = true });
     }
 
@@ -62,6 +70,7 @@ public class CatalogController : ControllerBase
     {
         var success = await _catalogService.DeleteProductAsync(id);
         if (!success) return NotFound();
+        await EvictCatalogAsync();
         return Ok(new { success = true });
     }
 }

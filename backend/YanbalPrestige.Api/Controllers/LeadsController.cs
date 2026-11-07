@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using YanbalPrestige.Api.Common.Security;
 using YanbalPrestige.Api.Data;
 using YanbalPrestige.Api.Entities;
 using YanbalPrestige.Api.Services.Interfaces;
@@ -19,6 +20,17 @@ public class LeadsController : ControllerBase
     {
         _context = context;
         _turnstileService = turnstileService;
+    }
+
+    [HttpGet]
+    [Authorize(Roles = $"{AuthRoles.Director},{AuthRoles.Assistant}")]
+    public async Task<IActionResult> GetLeads()
+    {
+        var leads = await _context.Leads.AsNoTracking()
+            .OrderByDescending(l => l.CreatedAt)
+            .Take(500)
+            .ToListAsync();
+        return Ok(leads);
     }
 
     [HttpPost("join")]
@@ -55,7 +67,16 @@ public class LeadsController : ControllerBase
         lead.FullName = Sanitize(lead.FullName, 150);
         lead.Phone = Sanitize(lead.Phone, 30);
         lead.City = Sanitize(lead.City, 100);
+        lead.Email = Sanitize(lead.Email ?? string.Empty, 150);
+        lead.Department = Sanitize(lead.Department ?? string.Empty, 100);
+        lead.Address = Sanitize(lead.Address ?? string.Empty, 200);
+        lead.Experience = Sanitize(lead.Experience ?? string.Empty, 500);
         lead.RoleInterest = Sanitize(lead.RoleInterest, 50).ToLowerInvariant();
+
+        if (!string.IsNullOrWhiteSpace(lead.Email) &&
+            !System.Text.RegularExpressions.Regex.IsMatch(
+                lead.Email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+            return BadRequest(new { message = "El correo electrónico no es válido." });
 
         if (lead.FullName.Length < 3 || lead.City.Length < 2)
             return BadRequest(new { message = "Nombre y ciudad no son válidos." });

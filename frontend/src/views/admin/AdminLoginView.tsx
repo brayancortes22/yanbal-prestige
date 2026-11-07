@@ -28,6 +28,18 @@ const demoAccounts: {
     name: 'Carolina Mejía',
     role: 'CONSULTORA',
   },
+  {
+    email: 'andrea.lider@yanbalprestige.com',
+    password: 'yanbal2026',
+    name: 'Andrea Gómez',
+    role: 'LIDER_ZONA',
+  },
+  {
+    email: 'laura.asistente@yanbalprestige.com',
+    password: 'yanbal2026',
+    name: 'Laura Asistente',
+    role: 'ASISTENTE',
+  },
 ];
 
 export const AdminLoginView: React.FC = () => {
@@ -40,9 +52,14 @@ export const AdminLoginView: React.FC = () => {
   const apiMode = isApiConfigured();
 
   const redirectByRole = (role: UserRole) => {
-    if (role === 'CONSULTORA') navigate('/consultora', { replace: true });
-    else if (role === 'CLIENTE') navigate('/', { replace: true });
-    else navigate('/admin', { replace: true });
+    // La líder de zona vende igual que una consultora y además ve su equipo.
+    if (role === 'CONSULTORA' || role === 'LIDER_ZONA') {
+      navigate('/consultora', { replace: true });
+    } else if (role === 'CLIENTE') {
+      navigate('/', { replace: true });
+    } else {
+      navigate('/admin', { replace: true });
+    }
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -189,7 +206,13 @@ export const AdminLoginView: React.FC = () => {
                   className="rounded-xl border border-brand-apricot/20 bg-brand-apricot-soft/50 p-2 text-left font-medium text-stone-800 transition-colors hover:bg-brand-apricot-soft"
                 >
                   <strong className="block text-brand-apricot-dark">
-                    {account.role === 'DIRECTORA' ? 'Directora' : 'Consultora'}
+                    {account.role === 'DIRECTORA'
+                      ? 'Administradora'
+                      : account.role === 'ASISTENTE'
+                        ? 'Asistente'
+                        : account.role === 'LIDER_ZONA'
+                          ? 'Líder de zona'
+                          : 'Consultora'}
                   </strong>
                   <span className="block truncate">{account.email}</span>
                 </button>

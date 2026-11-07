@@ -1,8 +1,9 @@
 import React from 'react';
+import type { PaymentStatus } from '../../../types';
 import { PAYMENT_COLORS, formatCopCompact } from './chartTheme';
 
 interface PaymentDonutProps {
-  orders: { paymentStatus: 'pendiente' | 'abono' | 'pagado'; totalAmount: number }[];
+  orders: { paymentStatus: PaymentStatus; totalAmount: number }[];
 }
 
 const RADIUS = 36;
@@ -14,9 +15,10 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
  * champagne y arena cálida, manteniendo la lectura de negocio.
  */
 export const PaymentDonut: React.FC<PaymentDonutProps> = ({ orders }) => {
-  const totalOrders = orders.length;
+  const activeOrders = orders.filter((order) => order.paymentStatus !== 'anulada');
+  const totalOrders = activeOrders.length;
   const groups = (['pagado', 'abono', 'pendiente'] as const).map((status) => {
-    const items = orders.filter((order) => order.paymentStatus === status);
+    const items = activeOrders.filter((order) => order.paymentStatus === status);
     return {
       status,
       count: items.length,

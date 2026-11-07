@@ -23,7 +23,14 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
   }
 
   if (allowedRoles && (!role || !allowedRoles.includes(role))) {
-    const destination = role === 'CONSULTORA' ? '/consultora' : '/';
+    // La líder también vende: su lugar es el portal de ventas, no el panel
+    // administrativo (allí solo entran la administradora y el super admin).
+    const destination =
+      role === 'CONSULTORA' || role === 'LIDER_ZONA'
+        ? '/consultora'
+        : role === 'ASISTENTE'
+          ? '/admin'
+          : '/';
     return <Navigate to={destination} replace />;
   }
 

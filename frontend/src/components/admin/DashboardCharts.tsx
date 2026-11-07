@@ -13,9 +13,20 @@ interface DashboardChartsProps {
  * componente y comparte la paleta de marca definida en `chartTheme.ts`.
  */
 export const DashboardCharts: React.FC<DashboardChartsProps> = ({ orders }) => {
+  // Las facturas anuladas o canceladas no cuentan como ingreso ni como
+  // unidades vendidas: se excluyen de toda la analítica.
+  const activeOrders = useMemo(
+    () =>
+      orders.filter(
+        (order) =>
+          order.deliveryStatus !== 'cancelado' && order.paymentStatus !== 'anulada'
+      ),
+    [orders]
+  );
+
   const topSkuList = useMemo(() => {
     const counts: Record<string, { name: string; qty: number; code: string }> = {};
-    orders.forEach((order) => {
+    activeOrders.forEach((order) => {
       order.items.forEach((item) => {
         if (!counts[item.productCode]) {
           counts[item.productCode] = {
@@ -33,12 +44,12 @@ export const DashboardCharts: React.FC<DashboardChartsProps> = ({ orders }) => {
     return sorted
       .slice(0, 5)
       .map((item) => ({ ...item, pct: Math.round((item.qty / maxQty) * 100) }));
-  }, [orders]);
+  }, [activeOrders]);
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-      <RevenueBars orders={orders} />
-      <PaymentDonut orders={orders} />
+      <RevenueBars orders={activeOrders} />
+      <PaymentDonut orders={activeOrders} />
       <TopSkuBars items={topSkuList} />
     </div>
   );

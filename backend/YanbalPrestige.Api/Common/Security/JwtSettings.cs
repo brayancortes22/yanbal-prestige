@@ -21,7 +21,18 @@ public static class AuthRoles
     public const string Director = "Director";
     public const string Consultant = "Consultant";
     public const string Client = "Client";
+    public const string Leader = "Leader";
+    public const string Assistant = "Assistant";
 
     /// <summary>Roles que pueden administrar contenido, catálogo y multimedia.</summary>
-    public const string ContentManagers = $"{Director}";
+    public const string ContentManagers = $"{Director},{Assistant}";
+
+    /// <summary>Roles con visión de equipo: administración y liderazgo de zona.</summary>
+    public const string TeamManagers = $"{Director},{Leader}";
+
+    /// <summary>Control total, incluida la gestión de usuarios y roles.</summary>
+    public const string Owners = $"{Director}";
+
+    /// <summary>Visión administrativa completa (directora o asistente).</summary>
+    public const string Admins = $"{Director},{Assistant}";
 }

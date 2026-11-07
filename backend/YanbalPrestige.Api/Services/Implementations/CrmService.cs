@@ -22,6 +22,21 @@ public class CrmService : ICrmService
             .ToListAsync();
     }
 
+    public async Task<List<ConsultantClient>> GetClientsByConsultantsAsync(List<string> consultantIds)
+    {
+        return await _context.ConsultantClients.AsNoTracking()
+            .Where(c => consultantIds.Contains(c.ConsultantId))
+            .OrderByDescending(c => c.LastContactDate)
+            .ToListAsync();
+    }
+
+    public async Task<List<ConsultantClient>> GetAllClientsAsync()
+    {
+        return await _context.ConsultantClients.AsNoTracking()
+            .OrderByDescending(c => c.LastContactDate)
+            .ToListAsync();
+    }
+
     public async Task<ConsultantClient> SaveClientAsync(ConsultantClient client)
     {
         if (string.IsNullOrWhiteSpace(client.Id))

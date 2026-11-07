@@ -34,6 +34,22 @@ public class Order
     [MaxLength(200)]
     public string ClientAddress { get; set; } = string.Empty;
 
+    [Column("cliente_correo")]
+    [MaxLength(150)]
+    public string ClientEmail { get; set; } = string.Empty;
+
+    [Column("cliente_documento")]
+    [MaxLength(30)]
+    public string ClientDocumentId { get; set; } = string.Empty;
+
+    [Column("cliente_barrio")]
+    [MaxLength(100)]
+    public string ClientNeighborhood { get; set; } = string.Empty;
+
+    [Column("cliente_codigo_postal")]
+    [MaxLength(20)]
+    public string ClientPostalCode { get; set; } = string.Empty;
+
     [Column("consultora_id")]
     [MaxLength(50)]
     public string ConsultantId { get; set; } = string.Empty;
@@ -74,4 +90,6 @@ public class Order
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     public List<OrderItem> Items { get; set; } = new();
+
+    public List<OrderPayment> Payments { get; set; } = new();
 }

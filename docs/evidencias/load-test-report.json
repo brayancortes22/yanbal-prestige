@@ -1,0 +1,23 @@
+{
+  "target": "http://127.0.0.1:4173",
+  "sessions": 1000,
+  "concurrency": 100,
+  "totalRequests": 4000,
+  "failedRequests": 0,
+  "errorRatePct": 0,
+  "elapsedMs": 18232,
+  "requestsPerSecond": 219.4,
+  "latencyMs": {
+    "min": 15,
+    "p50": 131,
+    "p95": 1534,
+    "p99": 1655,
+    "max": 1746
+  },
+  "megabytesTransferred": 702.17,
+  "statuses": {
+    "200": 4000
+  },
+  "sampleErrors": [],
+  "generatedAt": "2026-11-07T06:47:30.768Z"
+}

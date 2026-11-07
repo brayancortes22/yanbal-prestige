@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OutputCaching;
@@ -78,16 +79,36 @@ public class AuthController : ControllerBase
         return Ok(new { success = true, message = "Contraseña restablecida con éxito." });
     }
 
+    /// <summary>Perfil del usuario autenticado (cualquier rol).</summary>
+    [HttpGet("me")]
+    [Authorize]
+    public async Task<IActionResult> Me()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var users = await _authService.GetUsersAsync();
+        var current = users.FirstOrDefault(u => u.Id == userId);
+        if (current == null) return NotFound(new { message = "Usuario no encontrado." });
+        return Ok(current);
+    }
+
     [HttpGet("users")]
-    [Authorize(Roles = AuthRoles.ContentManagers)]
+    [Authorize]
     public async Task<IActionResult> GetUsers()
     {
         var users = await _authService.GetUsersAsync();
-        return Ok(users);
+        if (User.IsInRole(AuthRoles.Director)) return Ok(users);
+
+        var currentId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        // Un líder ve su perfil y su equipo; los demás solo su propio perfil.
+        if (User.IsInRole(AuthRoles.Leader))
+            return Ok(users.Where(u => u.Id == currentId || u.LeaderId == currentId));
+
+        return Ok(users.Where(u => u.Id == currentId));
     }
 
     [HttpPost("users")]
-    [Authorize(Roles = AuthRoles.ContentManagers)]
+    [Authorize(Roles = AuthRoles.Owners)]
     public async Task<IActionResult> SaveUser([FromBody] UserDto userDto)
     {
         var user = await _authService.SaveUserAsync(userDto);
@@ -95,7 +116,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPatch("users/{id}/toggle")]
-    [Authorize(Roles = AuthRoles.ContentManagers)]
+    [Authorize(Roles = AuthRoles.Owners)]
     public async Task<IActionResult> ToggleUser(string id)
     {
         var success = await _authService.ToggleUserStatusAsync(id);
@@ -104,7 +125,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpDelete("users/{id}")]
-    [Authorize(Roles = AuthRoles.ContentManagers)]
+    [Authorize(Roles = AuthRoles.Owners)]
     public async Task<IActionResult> DeleteUser(string id)
     {
         var success = await _authService.DeleteUserAsync(id);

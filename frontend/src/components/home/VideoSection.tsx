@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { Play, X } from 'lucide-react';
 import { useConfig } from '../../context/ConfigContext';
+import type { VideoTipItem } from '../../types';
 
 export const VideoSection: React.FC = () => {
   const { videoTips } = useConfig();
-  const [activeVideoTitle, setActiveVideoTitle] = useState<string | null>(null);
+  const [activeVideo, setActiveVideo] = useState<VideoTipItem | null>(null);
   const activeVideos = videoTips.filter((v) => v.active);
   const displayVideos = activeVideos.length > 0 ? activeVideos : videoTips;
 
@@ -27,7 +28,7 @@ export const VideoSection: React.FC = () => {
           {displayVideos.map((vid) => (
             <div
               key={vid.id}
-              onClick={() => setActiveVideoTitle(vid.title)}
+              onClick={() => setActiveVideo(vid)}
               className="group card-luxury rounded-3xl overflow-hidden cursor-pointer flex flex-col"
             >
               <div className="relative aspect-[4/3] bg-stone-100 overflow-hidden">
@@ -64,27 +65,38 @@ export const VideoSection: React.FC = () => {
         </div>
 
         {/* Modal Simulado de Reproducción */}
-        {activeVideoTitle && (
+        {activeVideo && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/80 backdrop-blur-sm p-4 animate-fadeIn">
             <div className="relative w-full max-w-2xl bg-stone-900 rounded-3xl overflow-hidden shadow-2xl border border-stone-800">
               <div className="p-4 border-b border-stone-800 flex items-center justify-between">
-                <span className="text-xs font-semibold text-stone-200">Reproduciendo: {activeVideoTitle}</span>
+                <span className="text-xs font-semibold text-stone-200">Reproduciendo: {activeVideo.title}</span>
                 <button
-                  onClick={() => setActiveVideoTitle(null)}
+                  onClick={() => setActiveVideo(null)}
                   className="w-8 h-8 rounded-full bg-stone-800 text-stone-400 hover:text-white flex items-center justify-center cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
-              <div className="aspect-video bg-black flex flex-col items-center justify-center p-8 text-center space-y-4">
-                <div className="w-16 h-16 rounded-full bg-orange-600/20 text-orange-500 flex items-center justify-center animate-pulse">
-                  <Play className="w-8 h-8 fill-current ml-1" />
+              {activeVideo.videoUrl ? (
+                <video
+                  src={activeVideo.videoUrl}
+                  controls
+                  autoPlay
+                  playsInline
+                  className="aspect-video w-full bg-black"
+                />
+              ) : (
+                <div className="aspect-video bg-black flex flex-col items-center justify-center p-8 text-center space-y-4">
+                  <div className="w-16 h-16 rounded-full bg-orange-600/20 text-orange-500 flex items-center justify-center animate-pulse">
+                    <Play className="w-8 h-8 fill-current ml-1" />
+                  </div>
+                  <p className="text-xs text-stone-400 max-w-sm">
+                    Este tutorial aún no tiene un archivo de video. La administradora puede subirlo
+                    desde Contenido CMS → Videos Tutoriales.
+                  </p>
                 </div>
-                <p className="text-xs text-stone-400 max-w-sm">
-                  Video oficial Yanbal Prestige demostrativo. Consulta con tu consultora de zona para una sesión personalizada.
-                </p>
-              </div>
+              )}
             </div>
           </div>
         )}

@@ -1,11 +1,18 @@
 import React, { useState } from 'react';
 import { Save, CheckCircle } from 'lucide-react';
 import { useConfig } from '../../../context/ConfigContext';
+import type { MediaItem } from '../../../types';
+import { MediaUploader } from '../../media/MediaUploader';
 
 export const CmsDigitalCatalogSection: React.FC = () => {
   const { digitalCatalog, setDigitalCatalog } = useConfig();
   const [form, setForm] = useState(digitalCatalog);
   const [saved, setSaved] = useState(false);
+  const [imageMedia, setImageMedia] = useState<MediaItem[]>(
+    digitalCatalog.coverImage
+      ? [{ id: 'cover', url: digitalCatalog.coverImage, type: 'image', alt: 'Portada catálogo' }]
+      : []
+  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,14 +86,23 @@ export const CmsDigitalCatalogSection: React.FC = () => {
               className="w-full p-2.5 text-xs rounded-xl border border-stone-200 bg-stone-50/50 font-semibold"
             />
           </div>
-          <div>
-            <label className="text-xs font-bold text-stone-800 block mb-1">URL Portada Revista</label>
-            <input
-              type="url"
-              value={form.coverImage}
-              onChange={(e) => setForm({ ...form, coverImage: e.target.value })}
-              className="w-full p-2.5 text-xs rounded-xl border border-stone-200 bg-stone-50/50"
-            />
+          <div className="sm:col-span-3">
+            <label className="text-xs font-bold text-stone-800 block mb-1">Portada de la Revista</label>
+            <div className="p-3 rounded-2xl border border-stone-200 bg-stone-50/40">
+              <MediaUploader
+                media={imageMedia}
+                onChange={(next) => {
+                  setImageMedia(next);
+                  setForm({ ...form, coverImage: next[0]?.url || '' });
+                }}
+                accept="image"
+                maxFiles={1}
+                subFolder="catalog"
+                label="Portada"
+                hint="Imagen vertical de la revista o catálogo de campaña."
+                showAlt={false}
+              />
+            </div>
           </div>
         </div>
 

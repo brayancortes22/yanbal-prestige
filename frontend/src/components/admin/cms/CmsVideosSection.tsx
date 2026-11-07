@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Plus, Trash2, Edit3, Power, Check, X } from 'lucide-react';
 import { useConfig } from '../../../context/ConfigContext';
-import type { VideoTipItem } from '../../../types';
+import type { MediaItem, VideoTipItem } from '../../../types';
+import { MediaUploader } from '../../media/MediaUploader';
 
 export const CmsVideosSection: React.FC = () => {
   const { videoTips, saveVideoTip, toggleVideoTip, deleteVideoTip } = useConfig();
@@ -11,6 +12,9 @@ export const CmsVideosSection: React.FC = () => {
   const [duration, setDuration] = useState('2:00 min');
   const [description, setDescription] = useState('');
   const [image, setImage] = useState('');
+  const [imageMedia, setImageMedia] = useState<MediaItem[]>([]);
+  const [videoUrl, setVideoUrl] = useState('');
+  const [videoMedia, setVideoMedia] = useState<MediaItem[]>([]);
 
   const handleOpenCreate = () => {
     setEditId(null);
@@ -18,6 +22,9 @@ export const CmsVideosSection: React.FC = () => {
     setDuration('1:45 min');
     setDescription('');
     setImage('https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?auto=format&fit=crop&w=600&q=80');
+    setImageMedia([]);
+    setVideoUrl('');
+    setVideoMedia([]);
     setIsEditing(true);
   };
 
@@ -27,6 +34,9 @@ export const CmsVideosSection: React.FC = () => {
     setDuration(v.duration);
     setDescription(v.description);
     setImage(v.image);
+    setImageMedia(v.image ? [{ id: 'cover', url: v.image, type: 'image', alt: v.title }] : []);
+    setVideoUrl(v.videoUrl || '');
+    setVideoMedia(v.videoUrl ? [{ id: 'video', url: v.videoUrl, type: 'video' }] : []);
     setIsEditing(true);
   };
 
@@ -39,6 +49,7 @@ export const CmsVideosSection: React.FC = () => {
       duration,
       description,
       image,
+      videoUrl: videoUrl || undefined,
       active: true,
     });
     setIsEditing(false);
@@ -89,14 +100,38 @@ export const CmsVideosSection: React.FC = () => {
             />
           </div>
 
-          <input
-            type="url"
-            required
-            placeholder="URL de imagen miniatura"
-            value={image}
-            onChange={(e) => setImage(e.target.value)}
-            className="w-full p-2.5 text-xs rounded-xl border border-stone-200 bg-stone-50/50"
-          />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="p-3 rounded-2xl border border-stone-200 bg-stone-50/40">
+              <MediaUploader
+                media={imageMedia}
+                onChange={(next) => {
+                  setImageMedia(next);
+                  setImage(next[0]?.url || '');
+                }}
+                accept="image"
+                maxFiles={1}
+                subFolder="videos"
+                label="Miniatura del video"
+                hint="Foto horizontal que se verá antes de reproducir."
+                showAlt={false}
+              />
+            </div>
+            <div className="p-3 rounded-2xl border border-stone-200 bg-stone-50/40">
+              <MediaUploader
+                media={videoMedia}
+                onChange={(next) => {
+                  setVideoMedia(next);
+                  setVideoUrl(next[0]?.url || '');
+                }}
+                accept="video"
+                maxFiles={1}
+                subFolder="videos"
+                label="Video tutorial (opcional)"
+                hint="MP4/WebM: se optimiza a 1280 px automáticamente."
+                showAlt={false}
+              />
+            </div>
+          </div>
 
           <textarea
             rows={2}

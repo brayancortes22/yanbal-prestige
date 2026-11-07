@@ -1,7 +1,15 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace YanbalPrestige.Api.Entities;
+
+public class ProductMedia
+{
+    public string Type { get; set; } = "image";
+    public string Url { get; set; } = string.Empty;
+    public string? Alt { get; set; }
+}
 
 [Table("productos")]
 public class Product
@@ -22,9 +30,17 @@ public class Product
     [MaxLength(50)]
     public string Category { get; set; } = string.Empty;
 
-    [Column("categoria_label")]
-    [MaxLength(100)]
-    public string CategoryLabel { get; set; } = string.Empty;
+    /// <summary>Clave foránea a `categorias_producto` (3FN).</summary>
+    [ForeignKey(nameof(Category))]
+    public ProductCategory? CategoryRef { get; set; }
+
+    /// <summary>
+    /// Etiqueta de presentación calculada desde la tabla de categorías.
+    /// No se persiste en `productos`: así se evita la dependencia transitiva
+    /// que duplicaba el nombre de la categoría en cada producto.
+    /// </summary>
+    [NotMapped]
+    public string CategoryLabel => CategoryRef?.Label ?? Category;
 
     [Column("precio", TypeName = "decimal(12,2)")]
     public decimal Price { get; set; }
@@ -34,6 +50,15 @@ public class Product
 
     [Column("imagen_url")]
     public string Image { get; set; } = string.Empty;
+
+    /// <summary>Galería de fotos/videos serializada en la base de datos.</summary>
+    [JsonIgnore]
+    [Column("media_json")]
+    public string MediaJson { get; set; } = "[]";
+
+    /// <summary>Galería deserializada para la respuesta JSON.</summary>
+    [NotMapped]
+    public List<ProductMedia> Media { get; set; } = new();
 
     [Column("descripcion")]
     public string Description { get; set; } = string.Empty;
