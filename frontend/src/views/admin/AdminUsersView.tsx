@@ -6,9 +6,11 @@ import { UserForm } from '../../components/admin/users/UserForm';
 import { UserTable } from '../../components/admin/users/UserTable';
 import { ResetRequestsPanel } from '../../components/admin/users/ResetRequestsPanel';
 import { useConfig } from '../../context/ConfigContext';
+import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../components/ui/ToastProvider';
 import { useConfirm } from '../../components/ui/ConfirmProvider';
-import type { AppUser, LeadProspect } from '../../types';
+import { roleCounts, roleLabel } from '../../components/admin/users/roleConfig';
+import type { AppUser, LeadProspect, UserRole } from '../../types';
 
 export const AdminUsersView: React.FC = () => {
   const {
@@ -34,8 +36,10 @@ export const AdminUsersView: React.FC = () => {
   const handledLeadRef = useRef(false);
   const { notify } = useToast();
   const confirm = useConfirm();
+  const { email: currentEmail } = useAuth();
 
   const leaders = useMemo(() => users.filter((user) => user.role === 'LIDER_ZONA'), [users]);
+  const { activeDirectors } = roleCounts(users);
 
   const counts = useMemo(
     () => ({
@@ -116,6 +120,43 @@ export const AdminUsersView: React.FC = () => {
     if (!accepted) return;
     deleteUser(user.id);
     notify(`${user.name} fue eliminada del directorio.`, 'info');
+  };
+
+  const handleChangeRole = async (user: AppUser, nextRole: UserRole) => {
+    if (user.role === nextRole) return;
+
+    if (currentEmail && user.email.toLowerCase() === currentEmail.toLowerCase()) {
+      notify(
+        'No puedes cambiar tu propio rol. Pide a otra administradora que lo haga.',
+        'error'
+      );
+      return;
+    }
+
+    if (user.role === 'DIRECTORA' && nextRole !== 'DIRECTORA' && activeDirectors <= 1) {
+      notify(
+        'Debe quedar al menos una administradora activa. Asigna ese rol a otra persona antes de cambiarlo.',
+        'error'
+      );
+      return;
+    }
+
+    const accepted = await confirm({
+      title: `¿Cambiar el rol de ${user.name}?`,
+      message: `Pasará de ${roleLabel(user.role)} a ${roleLabel(
+        nextRole
+      )}. El nuevo rol se aplicará cuando vuelva a iniciar sesión.`,
+      confirmText: 'Sí, cambiar rol',
+      tone: 'primary',
+    });
+    if (!accepted) return;
+
+    saveUser({
+      ...user,
+      role: nextRole,
+      leaderId: nextRole === 'CONSULTORA' ? user.leaderId : undefined,
+    });
+    notify(`El rol de ${user.name} se actualizó a ${roleLabel(nextRole)}.`);
   };
 
   const handleCopyPin = (pin: string, id: string) => {
@@ -292,16 +333,19 @@ export const AdminUsersView: React.FC = () => {
         </div>
 
         <div className="overflow-hidden rounded-3xl border border-stone-200/80 bg-white shadow-xs">
-          <div className="flex items-center justify-between border-b border-stone-100 p-4 font-editorial text-base font-bold text-stone-900">
+          <div className="flex flex-col gap-1 border-b border-stone-100 p-4 font-editorial text-base font-bold text-stone-900 sm:flex-row sm:items-center sm:justify-between">
             <span>Directorio de la red</span>
             <span className="font-sans text-xs font-normal text-stone-500">
               <Users className="mr-1 inline h-3.5 w-3.5" />
-              {filteredUsers.length} integrantes
+              {filteredUsers.length} integrantes · toca el rol para cambiarlo
             </span>
           </div>
           <UserTable
             users={filteredUsers}
             allUsers={users}
+            currentEmail={currentEmail}
+            canManageRoles
+            onChangeRole={handleChangeRole}
             onEdit={openEdit}
             onToggle={handleToggle}
             onDelete={handleDelete}

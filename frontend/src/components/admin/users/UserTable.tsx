@@ -1,51 +1,26 @@
 import React from 'react';
-import { Edit3, Power, Trash2, Users, Crown, ShieldCheck, Sparkles } from 'lucide-react';
-import type { AppUser } from '../../../types';
+import { Edit3, Power, Trash2, Users } from 'lucide-react';
+import type { AppUser, UserRole } from '../../../types';
+import { roleConfig, editableRoles } from './roleConfig';
+import { RoleBadgeSelect } from './RoleBadgeSelect';
 
 interface UserTableProps {
   users: AppUser[];
   allUsers: AppUser[];
+  currentEmail?: string | null;
+  canManageRoles?: boolean;
+  onChangeRole?: (user: AppUser, role: UserRole) => void;
   onEdit: (user: AppUser) => void;
   onToggle: (id: string) => void;
   onDelete: (user: AppUser) => void;
 }
 
-const roleConfig = {
-  DIRECTORA: {
-    label: 'Administradora',
-    className: 'border-brand-apricot/30 bg-brand-apricot-soft text-brand-apricot-dark',
-    Icon: Crown,
-  },
-  ASISTENTE: {
-    label: 'Asistente',
-    className: 'border-sky-200 bg-sky-50 text-sky-700',
-    Icon: ShieldCheck,
-  },
-  LIDER_ZONA: {
-    label: 'Líder de zona',
-    className: 'border-brand-gold/40 bg-[#FBF3D9] text-[#8A6D12]',
-    Icon: ShieldCheck,
-  },
-  CONSULTORA: {
-    label: 'Consultora',
-    className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-    Icon: Sparkles,
-  },
-  SUPER_ADMIN: {
-    label: 'Super admin',
-    className: 'border-stone-300 bg-stone-100 text-stone-700',
-    Icon: Crown,
-  },
-  CLIENTE: {
-    label: 'Cliente',
-    className: 'border-stone-200 bg-stone-50 text-stone-600',
-    Icon: Users,
-  },
-} as const;
-
 export const UserTable: React.FC<UserTableProps> = ({
   users,
   allUsers,
+  currentEmail,
+  canManageRoles = false,
+  onChangeRole,
   onEdit,
   onToggle,
   onDelete,
@@ -86,12 +61,27 @@ export const UserTable: React.FC<UserTableProps> = ({
                   </td>
                   <td className="p-4 font-mono text-[11px] text-stone-600">{user.email}</td>
                   <td className="p-4">
-                    <span
-                      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${config.className}`}
-                    >
-                      <RoleIcon className="h-3 w-3" />
-                      {config.label}
-                    </span>
+                    {canManageRoles &&
+                    onChangeRole &&
+                    editableRoles.includes(user.role) &&
+                    currentEmail?.toLowerCase() !== user.email.toLowerCase() ? (
+                      <RoleBadgeSelect
+                        user={user}
+                        onChange={(role) => onChangeRole(user, role)}
+                      />
+                    ) : (
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${config.className}`}
+                        title={
+                          currentEmail?.toLowerCase() === user.email.toLowerCase()
+                            ? 'No puedes cambiar tu propio rol'
+                            : undefined
+                        }
+                      >
+                        <RoleIcon className="h-3 w-3" />
+                        {config.label}
+                      </span>
+                    )}
                   </td>
                   <td className="p-4 text-stone-600">
                     {user.role === 'CONSULTORA' ? (

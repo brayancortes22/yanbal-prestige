@@ -125,3 +125,18 @@ Comportamiento:
   “Legal” y “Pie & Redes”, para editar los cuatro documentos por un lado y los
   enlaces de WhatsApp, Instagram, TikTok, correo y aviso legal por otro, sin
   hacer scroll largo.
+
+## 10. Cambio de rol desde el directorio
+
+- La etiqueta de rol de cada fila ahora es un **selector**: al tocarla se elige
+  Consultora, Líder de zona, Asistente o Administradora y se pide confirmación.
+- El cambio se guarda en MySQL vía `POST /api/Auth/users`; la tabla se
+  actualiza al recibir la respuesta y el nuevo rol aplica cuando la persona
+  **vuelva a iniciar sesión** (el rol viaja firmado en el JWT).
+- Protecciones para no dejar la red sin administración:
+  - la administradora **no puede cambiarse su propio rol** desde la tabla;
+  - no se puede desactivar ni eliminar la **última administradora activa**;
+  - el backend valida las mismas reglas, no solo la interfaz (responde `400`).
+- Al pasar a un rol que no es Consultora se limpia el líder asignado, para no
+  dejar relaciones de equipo huérfanas.
+
