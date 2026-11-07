@@ -23,16 +23,18 @@ public static class AuthRoles
     public const string Client = "Client";
     public const string Leader = "Leader";
     public const string Assistant = "Assistant";
+    /// <summary>Soporte técnico con control total (cuenta del equipo desarrollador).</summary>
+    public const string Developer = "Developer";
 
     /// <summary>Roles que pueden administrar contenido, catálogo y multimedia.</summary>
-    public const string ContentManagers = $"{Director},{Assistant}";
+    public const string ContentManagers = $"{Director},{Assistant},{Developer}";
 
     /// <summary>Roles con visión de equipo: administración y liderazgo de zona.</summary>
-    public const string TeamManagers = $"{Director},{Leader}";
+    public const string TeamManagers = $"{Director},{Leader},{Developer}";
 
     /// <summary>Control total, incluida la gestión de usuarios y roles.</summary>
-    public const string Owners = $"{Director}";
+    public const string Owners = $"{Director},{Developer}";
 
-    /// <summary>Visión administrativa completa (directora o asistente).</summary>
-    public const string Admins = $"{Director},{Assistant}";
+    /// <summary>Visión administrativa completa (directora, asistente o soporte).</summary>
+    public const string Admins = $"{Director},{Assistant},{Developer}";
 }

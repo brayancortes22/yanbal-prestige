@@ -25,13 +25,15 @@ export const AdminNav: React.FC = () => {
   ].filter((item) => !role || item.roles.includes(role));
 
   const roleLabel =
-    role === 'ASISTENTE'
-      ? 'Asistente administrativa'
-      : role === 'LIDER_ZONA'
-        ? 'Líder de zona'
-        : role === 'DIRECTORA'
-          ? 'Administradora'
-          : 'Invitada';
+    role === 'SUPER_ADMIN'
+      ? 'Desarrollador (soporte)'
+      : role === 'ASISTENTE'
+        ? 'Asistente administrativa'
+        : role === 'LIDER_ZONA'
+          ? 'Líder de zona'
+          : role === 'DIRECTORA'
+            ? 'Administradora'
+            : 'Invitada';
 
   // La cabecera institucional queda estática y solo la barra de pestañas se
   // pega bajo el header fijo (h-20). Antes todo el bloque se anclaba a

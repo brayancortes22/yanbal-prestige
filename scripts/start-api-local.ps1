@@ -29,6 +29,10 @@ $env:ConnectionStrings__DefaultConnection =
 $env:JWT_KEY = if ($vars['JWT_KEY']) { $vars['JWT_KEY'] } else { 'yanbal-prestige-dev-jwt-key-2026-bscl-32chars' }
 $env:ASPNETCORE_ENVIRONMENT = 'Development'
 
+# Cuenta de soporte del equipo desarrollador (se siembra al arrancar).
+if ($vars['SUPPORT_EMAIL']) { $env:SUPPORT_EMAIL = $vars['SUPPORT_EMAIL'] }
+if ($vars['SUPPORT_PASSWORD']) { $env:SUPPORT_PASSWORD = $vars['SUPPORT_PASSWORD'] }
+
 # Directorio temporal propio para el buffering de subidas grandes. Evita
 # depender de los permisos del %TEMP% del sistema y se puede limpiar aparte.
 $tempRoot = Join-Path $env:LOCALAPPDATA 'Temp\yanbal-prestige'

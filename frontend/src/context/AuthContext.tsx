@@ -10,35 +10,30 @@ const STORAGE = {
   demo: 'yanbal_auth_demo',
 } as const;
 
-/** Convierte el rol del backend (`Director`, `Consultant`, `Client`) al rol de UI. */
+const ROLE_ALIASES: Array<[UserRole, string[]]> = [
+  ['SUPER_ADMIN', ['6', 'developer', 'desarrollador', 'soporte']],
+  ['DIRECTORA', ['1', 'director', 'directora', 'admin']],
+  ['ASISTENTE', ['5', 'assistant', 'asistente', 'asistente_administrativa']],
+  ['CONSULTORA', ['2', 'consultant', 'consultora']],
+  ['LIDER_ZONA', ['4', 'leader', 'lider_zona', 'lider']],
+  ['CLIENTE', ['3', 'client', 'cliente']],
+];
+
+/**
+ * Convierte el rol del backend al rol de UI. Acepta un valor suelto o una
+ * lista separada por comas: el JWT del desarrollador incluye `Developer` y
+ * `Director`, y debe prevalecer el de mayor privilegio.
+ */
 export const normalizeRole = (role?: string | number | null): UserRole => {
-  switch (String(role ?? '').toLowerCase()) {
-    case '1':
-    case 'director':
-    case 'directora':
-    case 'admin':
-      return 'DIRECTORA';
-    case '5':
-    case 'assistant':
-    case 'asistente':
-    case 'asistente_administrativa':
-      return 'ASISTENTE';
-    case '2':
-    case 'consultant':
-    case 'consultora':
-      return 'CONSULTORA';
-    case '3':
-    case 'client':
-    case 'cliente':
-      return 'CLIENTE';
-    case '4':
-    case 'leader':
-    case 'lider_zona':
-    case 'lider':
-      return 'LIDER_ZONA';
-    default:
-      return 'CLIENTE';
+  const values = String(role ?? '')
+    .split(',')
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean);
+
+  for (const [uiRole, aliases] of ROLE_ALIASES) {
+    if (values.some((value) => aliases.includes(value))) return uiRole;
   }
+  return 'CLIENTE';
 };
 
 interface AuthContextType {

@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using YanbalPrestige.Api.Common.Enums;
 using YanbalPrestige.Api.Common.Security;
 using YanbalPrestige.Api.Entities;
 
@@ -35,6 +36,12 @@ public class TokenService : ITokenService
             new(ClaimTypes.Name, user.FullName),
             new(ClaimTypes.Role, user.Role.ToString())
         };
+
+        // El soporte técnico hereda además el rol Director para que todas las
+        // comprobaciones existentes (IsInRole, [Authorize]) sigan funcionando
+        // sin tener que tocar cada controlador.
+        if (user.Role == UserRole.Developer)
+            claims.Add(new Claim(ClaimTypes.Role, AuthRoles.Director));
 
         var credentials = new SigningCredentials(
             new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.Key)),
