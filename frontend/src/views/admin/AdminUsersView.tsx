@@ -302,6 +302,7 @@ export const AdminUsersView: React.FC = () => {
               <option value="ASISTENTE">Asistente administrativa</option>
               <option value="LIDER_ZONA">Líder de zona</option>
               <option value="CONSULTORA">Consultora</option>
+              <option value="SUPER_ADMIN">Desarrollador (soporte)</option>
             </select>
 
             <select

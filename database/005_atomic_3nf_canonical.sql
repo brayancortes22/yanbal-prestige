@@ -101,7 +101,7 @@ CREATE TABLE IF NOT EXISTS `usuarios` (
     KEY `idx_usuarios_activo` (`activo`),
     KEY `idx_usuarios_lider` (`lider_id`),
     -- 1 Directora, 2 Consultora, 3 Cliente, 4 Líder de zona, 5 Asistente.
-    CONSTRAINT `chk_usuarios_rol` CHECK (`rol` IN (1, 2, 3, 4, 5)),
+    CONSTRAINT `chk_usuarios_rol` CHECK (`rol` IN (1, 2, 3, 4, 5, 6)),
     CONSTRAINT `chk_usuarios_correo` CHECK (`correo` LIKE '%@%.%'),
     -- RESTRICT (no SET NULL/CASCADE): MySQL no permite un CHECK sobre una
     -- columna que una acción referencial pueda modificar.

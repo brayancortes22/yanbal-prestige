@@ -128,6 +128,9 @@ const numericRole: Record<UserRole, number> = {
 const roleFromApi = (role: number | string): UserRole => {
   if (typeof role === 'string') {
     const clean = role.toLowerCase();
+    if (clean.includes('developer') || clean.includes('desarrollador') || clean.includes('soporte')) {
+      return 'SUPER_ADMIN';
+    }
     if (clean.includes('director') || clean.includes('admin')) return 'DIRECTORA';
     if (clean.includes('assistant') || clean.includes('asistente')) return 'ASISTENTE';
     if (clean.includes('leader') || clean.includes('lider')) return 'LIDER_ZONA';
@@ -143,6 +146,8 @@ const roleFromApi = (role: number | string): UserRole => {
       return 'LIDER_ZONA';
     case 5:
       return 'ASISTENTE';
+    case 6:
+      return 'SUPER_ADMIN';
     default:
       return 'CLIENTE';
   }

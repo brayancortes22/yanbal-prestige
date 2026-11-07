@@ -1,4 +1,4 @@
-import { Crown, ShieldCheck, Sparkles, Users } from 'lucide-react';
+import { Crown, ShieldCheck, Sparkles, Terminal, Users } from 'lucide-react';
 import type { AppUser, UserRole } from '../../../types';
 
 type RoleVisual = {
@@ -29,9 +29,9 @@ export const roleConfig: Record<UserRole, RoleVisual> = {
     Icon: Sparkles,
   },
   SUPER_ADMIN: {
-    label: 'Super admin',
-    className: 'border-stone-300 bg-stone-100 text-stone-700',
-    Icon: Crown,
+    label: 'Desarrollador',
+    className: 'border-indigo-200 bg-indigo-50 text-indigo-700',
+    Icon: Terminal,
   },
   CLIENTE: {
     label: 'Cliente',
