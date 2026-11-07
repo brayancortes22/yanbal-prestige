@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.AspNetCore.RateLimiting;
+using YanbalPrestige.Api.Common.Enums;
 using YanbalPrestige.Api.Common.Security;
 using YanbalPrestige.Api.DTOs;
 using YanbalPrestige.Api.Services.Interfaces;
@@ -111,6 +112,36 @@ public class AuthController : ControllerBase
     [Authorize(Roles = AuthRoles.Owners)]
     public async Task<IActionResult> SaveUser([FromBody] UserDto userDto)
     {
+        var users = await _authService.GetUsersAsync();
+        var existing = users.FirstOrDefault(u => u.Id == userDto.Id);
+        var currentId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (existing != null)
+        {
+            if (existing.Id == currentId &&
+                existing.Role == UserRole.Director &&
+                userDto.Role != UserRole.Director)
+            {
+                return BadRequest(new
+                {
+                    message = "No puedes quitarte a ti misma el rol de administradora."
+                });
+            }
+
+            var activeDirectors = users.Count(u => u.Role == UserRole.Director && u.IsActive);
+            var removesActiveDirector = existing.Role == UserRole.Director &&
+                                        existing.IsActive &&
+                                        (userDto.Role != UserRole.Director || !userDto.IsActive);
+
+            if (removesActiveDirector && activeDirectors <= 1)
+            {
+                return BadRequest(new
+                {
+                    message = "Debe quedar al menos una administradora activa en la red."
+                });
+            }
+        }
+
         var user = await _authService.SaveUserAsync(userDto);
         return Ok(user);
     }
@@ -119,6 +150,23 @@ public class AuthController : ControllerBase
     [Authorize(Roles = AuthRoles.Owners)]
     public async Task<IActionResult> ToggleUser(string id)
     {
+        var currentId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (id == currentId)
+            return BadRequest(new { message = "No puedes desactivar tu propia cuenta." });
+
+        var users = await _authService.GetUsersAsync();
+        var target = users.FirstOrDefault(u => u.Id == id);
+        if (target == null) return NotFound();
+
+        var activeDirectors = users.Count(u => u.Role == UserRole.Director && u.IsActive);
+        if (target.Role == UserRole.Director && target.IsActive && activeDirectors <= 1)
+        {
+            return BadRequest(new
+            {
+                message = "Debe quedar al menos una administradora activa en la red."
+            });
+        }
+
         var success = await _authService.ToggleUserStatusAsync(id);
         if (!success) return NotFound();
         return Ok(new { success = true });
@@ -128,6 +176,23 @@ public class AuthController : ControllerBase
     [Authorize(Roles = AuthRoles.Owners)]
     public async Task<IActionResult> DeleteUser(string id)
     {
+        var currentId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (id == currentId)
+            return BadRequest(new { message = "No puedes eliminar tu propia cuenta." });
+
+        var users = await _authService.GetUsersAsync();
+        var target = users.FirstOrDefault(u => u.Id == id);
+        if (target == null) return NotFound();
+
+        var activeDirectors = users.Count(u => u.Role == UserRole.Director && u.IsActive);
+        if (target.Role == UserRole.Director && target.IsActive && activeDirectors <= 1)
+        {
+            return BadRequest(new
+            {
+                message = "Debe quedar al menos una administradora activa en la red."
+            });
+        }
+
         var success = await _authService.DeleteUserAsync(id);
         if (!success) return NotFound();
         return Ok(new { success = true });
