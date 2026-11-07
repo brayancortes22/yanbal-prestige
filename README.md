@@ -23,7 +23,8 @@ Desarrollado bajo la metodología **Ciclo Completo bscl**, estándar estético *
 - **Jerarquía de roles**: administradora, **asistente administrativa**
   (catálogo, CMS, anuncios, prospectos y ventas), líder de zona (vende y tiene
   trabajadoras a cargo) y consultora. Asignación de equipo desde
-  **Equipo & Roles**, con búsqueda por nombre o zona.
+  **Equipo & Roles**, con búsqueda por nombre o zona. El rol se puede cambiar
+  **desde la misma tabla** tocando la etiqueta del rol.
 - **Abonos editables**: cada pago guarda monto, método, nota y fecha; se puede
   corregir o eliminar, registrar devoluciones y el estado del pedido se
   recalcula solo. Las facturas canceladas quedan marcadas como **anuladas**.
