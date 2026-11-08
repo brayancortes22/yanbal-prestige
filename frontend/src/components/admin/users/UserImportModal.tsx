@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { X, UploadCloud, Download, CheckCircle2, AlertCircle, Users, FileText } from 'lucide-react';
+import { X, UploadCloud, Download, CheckCircle2, AlertCircle, Users, FileSpreadsheet, FileText } from 'lucide-react';
 import type { AppUser } from '../../../types';
 import { parseUserCsv, downloadUserCsvTemplate, type ParsedUserRow } from '../../../utils/userCsv';
+import { downloadUserExcelWorkbook, parseUserWorkbook } from '../../../utils/userXlsx';
 import { useToast } from '../../ui/ToastProvider';
 import { useBodyScrollLock } from '../../../hooks/useBodyScrollLock';
 
@@ -15,6 +16,7 @@ export const UserImportModal: React.FC<UserImportModalProps> = ({ isOpen, onClos
   const [rows, setRows] = useState<ParsedUserRow[]>([]);
   const [errorMsg, setErrorMsg] = useState('');
   const [fileName, setFileName] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
   const { notify } = useToast();
 
   const validUsers = useMemo(
@@ -27,49 +29,66 @@ export const UserImportModal: React.FC<UserImportModalProps> = ({ isOpen, onClos
 
   if (!isOpen) return null;
 
-  const processFile = (file: File) => {
+  const processFile = async (file: File) => {
     setFileName(file.name);
     setErrorMsg('');
     setRows([]);
+    setIsProcessing(true);
 
-    if (!/\.(csv|txt)$/i.test(file.name)) {
-      setErrorMsg('Por favor selecciona un archivo .csv o .txt delimitado por comas.');
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const text = String(e.target?.result || '');
-        const parsed = parseUserCsv(text);
+    try {
+      if (/\.(xlsx|xlsm)$/i.test(file.name)) {
+        const parsed = await parseUserWorkbook(file);
         if (parsed.length === 0) {
-          setErrorMsg('El archivo no contiene registros o solo contiene encabezados.');
+          setErrorMsg('El archivo Excel no contiene filas de datos o solo tiene encabezados.');
         } else {
           setRows(parsed);
         }
-      } catch (err) {
-        setErrorMsg(err instanceof Error ? err.message : 'Error al procesar el archivo CSV.');
+        return;
       }
-    };
-    reader.onerror = () => setErrorMsg('Error al leer el archivo en disco.');
-    reader.readAsText(file, 'UTF-8');
+
+      if (!/\.(csv|txt)$/i.test(file.name)) {
+        setErrorMsg('Por favor selecciona un archivo Excel (.xlsx) o CSV (.csv, .txt).');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const text = String(e.target?.result || '');
+          const parsed = parseUserCsv(text);
+          if (parsed.length === 0) {
+            setErrorMsg('El archivo no contiene registros o solo contiene encabezados.');
+          } else {
+            setRows(parsed);
+          }
+        } catch (err) {
+          setErrorMsg(err instanceof Error ? err.message : 'Error al procesar el archivo CSV.');
+        }
+      };
+      reader.onerror = () => setErrorMsg('Error al leer el archivo en disco.');
+      reader.readAsText(file, 'UTF-8');
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Error al procesar el archivo Excel.');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) processFile(file);
+    if (file) void processFile(file);
   };
 
   const handleDrop = (e: React.DragEvent<HTMLLabelElement>) => {
     e.preventDefault();
     const file = e.dataTransfer.files?.[0];
-    if (file) processFile(file);
+    if (file) void processFile(file);
   };
 
   const handleConfirm = () => {
     if (validUsers.length === 0) return;
     onImport(validUsers);
-    notify(`Se importaron ${validUsers.length} integrantes exitosamente.`);
+    notify(`Se importaron ${validUsers.length} integrantes exitosamente a la red.`);
     onClose();
   };
 
@@ -83,33 +102,56 @@ export const UserImportModal: React.FC<UserImportModalProps> = ({ isOpen, onClos
               <Users className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-editorial text-lg font-bold text-stone-900">Carga Masiva de Usuarias</h3>
-              <p className="text-xs text-stone-500">Importa consultoras, líderes o directoras desde un archivo CSV.</p>
+              <h3 className="font-editorial text-lg font-bold text-stone-900">
+                Carga Masiva de Integrantes de la Red
+              </h3>
+              <p className="text-xs text-stone-500">
+                Importa consultores/as, líderes o coordinadores/as desde una plantilla Excel (.xlsx) o CSV.
+              </p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 text-stone-400 hover:text-stone-700 rounded-xl hover:bg-stone-100 transition-colors cursor-pointer">
+          <button
+            onClick={onClose}
+            className="p-2 text-stone-400 hover:text-stone-700 rounded-xl hover:bg-stone-100 transition-colors cursor-pointer"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Cuerpo */}
         <div className="p-6 overflow-y-auto space-y-4 flex-1">
-          {/* Descarga de plantilla */}
-          <div className="flex items-center justify-between p-3.5 rounded-2xl bg-orange-50/50 border border-orange-100">
+          {/* Descarga de plantillas */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-orange-50/50 border border-orange-100">
             <div className="flex items-center gap-2.5">
-              <FileText className="w-4 h-4 text-orange-600 shrink-0" />
-              <span className="text-xs text-stone-700 font-medium">
-                ¿No tienes el formato? Descarga la plantilla oficial con encabezados.
-              </span>
+              <FileSpreadsheet className="w-5 h-5 text-orange-600 shrink-0" />
+              <div>
+                <span className="text-xs text-stone-800 font-bold block">
+                  Plantilla Oficial Formateada
+                </span>
+                <span className="text-[11px] text-stone-500">
+                  Descarga el formato con validación de roles y columnas configuradas.
+                </span>
+              </div>
             </div>
-            <button
-              type="button"
-              onClick={downloadUserCsvTemplate}
-              className="px-3 py-1.5 rounded-xl bg-white border border-orange-200 text-orange-700 text-xs font-bold hover:bg-orange-50 transition-colors flex items-center gap-1.5 cursor-pointer shrink-0"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>Descargar Plantilla CSV</span>
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => void downloadUserExcelWorkbook()}
+                className="px-3.5 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Descargar Excel (.xlsx)</span>
+              </button>
+              <button
+                type="button"
+                onClick={downloadUserCsvTemplate}
+                className="px-3 py-2 rounded-xl bg-white border border-stone-200 text-stone-700 hover:bg-stone-50 text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer"
+                title="Descargar versión ligera CSV"
+              >
+                <FileText className="w-3.5 h-3.5 text-stone-500" />
+                <span>CSV</span>
+              </button>
+            </div>
           </div>
 
           {/* Zona de Drop / Subida */}
@@ -120,11 +162,17 @@ export const UserImportModal: React.FC<UserImportModalProps> = ({ isOpen, onClos
           >
             <UploadCloud className="w-8 h-8 text-stone-400 mb-2" />
             <span className="text-xs font-bold text-stone-800">
-              {fileName ? fileName : 'Arrastra tu archivo CSV aquí o haz clic para examinar'}
+              {fileName ? fileName : 'Arrastra tu archivo Excel (.xlsx) o CSV aquí o haz clic para examinar'}
             </span>
-            <span className="text-[11px] text-stone-400 mt-1">Soporta archivos .csv codificados en UTF-8</span>
-            <input type="file" accept=".csv,.txt" onChange={handleFileUpload} className="hidden" />
+            <span className="text-[11px] text-stone-400 mt-1">
+              Compatible con Microsoft Excel (.xlsx), Google Sheets y archivos .csv
+            </span>
+            <input type="file" accept=".xlsx,.xlsm,.csv,.txt" onChange={handleFileUpload} className="hidden" />
           </label>
+
+          {isProcessing && (
+            <p className="text-center text-xs text-stone-500 py-2">Procesando archivo...</p>
+          )}
 
           {errorMsg && (
             <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
@@ -137,7 +185,7 @@ export const UserImportModal: React.FC<UserImportModalProps> = ({ isOpen, onClos
           {rows.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs font-bold text-stone-700">
-                <span>Vista Previa ({rows.length} registros detectados)</span>
+                <span>Vista Previa ({rows.length} personas detectadas)</span>
                 <span className="flex items-center gap-3">
                   <span className="text-emerald-700 flex items-center gap-1">
                     <CheckCircle2 className="w-3.5 h-3.5" /> {validUsers.length} válidos
@@ -198,7 +246,7 @@ export const UserImportModal: React.FC<UserImportModalProps> = ({ isOpen, onClos
             className="px-5 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 disabled:opacity-50 text-white text-xs font-semibold flex items-center gap-2 shadow-sm transition-colors cursor-pointer"
           >
             <CheckCircle2 className="w-4 h-4" />
-            <span>Confirmar Carga ({validUsers.length} usuarias)</span>
+            <span>Confirmar Carga ({validUsers.length} integrantes)</span>
           </button>
         </div>
       </div>

@@ -121,9 +121,10 @@ export function parseUserCsv(csvText: string): ParsedUserRow[] {
 export function downloadUserCsvTemplate() {
   const headers = ['Nombre Completo', 'Correo Electronico', 'Cedula', 'Telefono', 'Rol', 'Zona', 'Lider ID'];
   const sampleRows = [
-    ['Mariana Gomez', 'mariana.gomez@yanbalprestige.com', '1020304050', '+57 311 234 5678', 'CONSULTORA', 'Zona 12 - Bogota Norte', 'usr-3'],
-    ['Luisa Fernanda Perez', 'luisa.perez@yanbalprestige.com', '1098765432', '+57 315 876 5432', 'LIDER_ZONA', 'Zona 15 - Medellin', ''],
-    ['Camila Morales', 'camila.morales@yanbalprestige.com', '52890123', '+57 320 999 1122', 'CONSULTORA', 'Zona 12 - Usaquen', 'usr-3'],
+    ['Carlos Mendoza', 'carlos.mendoza@yanbalprestige.com', '1020304050', '+57 311 234 5678', 'CONSULTORA', 'Zona 12 - Bogota Norte', 'usr-3'],
+    ['Andrea Gomez', 'andrea.gomez@yanbalprestige.com', '52890123', '+57 320 888 9900', 'LIDER_ZONA', 'Zona 15 - Medellin', ''],
+    ['Alejandro Ramirez', 'alejandro.ramirez@yanbalprestige.com', '1098765432', '+57 315 876 5432', 'CONSULTORA', 'Zona 12 - Suba', 'usr-3'],
+    ['Valentina Castro', 'valentina.castro@yanbalprestige.com', '1033445566', '+57 300 111 2233', 'CONSULTORA', 'Zona 12 - Usaquen', 'usr-3'],
   ];
 
   const csvContent = '\uFEFF' + [headers.join(','), ...sampleRows.map((r) => r.join(','))].join('\r\n');
@@ -131,7 +132,7 @@ export function downloadUserCsvTemplate() {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.setAttribute('href', url);
-  link.setAttribute('download', 'plantilla_usuarios_yanbal_prestige.csv');
+  link.setAttribute('download', 'plantilla_integrantes_yanbal_prestige.csv');
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);

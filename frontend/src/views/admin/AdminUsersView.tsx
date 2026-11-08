@@ -144,7 +144,7 @@ export const AdminUsersView: React.FC = () => {
     }
     toggleUserActive(id);
     if (user) {
-      notify(`Integrante ${user.name} ${user.active ? 'desactivada' : 'activada'}.`);
+      notify(`Integrante ${user.name} ${user.active ? 'desactivado/a' : 'activado/a'}.`);
     }
   };
 
@@ -162,7 +162,7 @@ export const AdminUsersView: React.FC = () => {
     });
     if (!ok) return;
     deleteUser(user.id);
-    notify(`Integrante ${user.name} eliminada.`);
+    notify(`Integrante ${user.name} eliminado/a.`);
   };
 
   const handleCopyPin = (id: string, pin: string) => {
@@ -218,7 +218,7 @@ export const AdminUsersView: React.FC = () => {
               className="flex cursor-pointer items-center gap-1.5 rounded-xl border border-stone-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-stone-700 shadow-xs hover:bg-stone-50 transition-colors"
             >
               <UploadCloud className="h-4 w-4 text-orange-600" />
-              <span>Carga Masiva CSV</span>
+              <span>Importar Excel / CSV</span>
             </button>
             <button
               id="btn-new-user"
@@ -227,7 +227,7 @@ export const AdminUsersView: React.FC = () => {
               className="flex cursor-pointer items-center gap-1.5 rounded-xl bg-brand-apricot px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition-all hover:bg-brand-apricot-dark"
             >
               <Plus className="h-4 w-4" />
-              <span>Nueva integrante</span>
+              <span>Nuevo integrante</span>
             </button>
           </div>
         </div>
