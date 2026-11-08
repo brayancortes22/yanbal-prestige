@@ -10,9 +10,15 @@ interface UserImportModalProps {
   isOpen: boolean;
   onClose: () => void;
   onImport: (users: AppUser[]) => void;
+  existingUsers?: AppUser[];
 }
 
-export const UserImportModal: React.FC<UserImportModalProps> = ({ isOpen, onClose, onImport }) => {
+export const UserImportModal: React.FC<UserImportModalProps> = ({
+  isOpen,
+  onClose,
+  onImport,
+  existingUsers = [],
+}) => {
   const [rows, setRows] = useState<ParsedUserRow[]>([]);
   const [errorMsg, setErrorMsg] = useState('');
   const [fileName, setFileName] = useState('');
@@ -37,7 +43,7 @@ export const UserImportModal: React.FC<UserImportModalProps> = ({ isOpen, onClos
 
     try {
       if (/\.(xlsx|xlsm)$/i.test(file.name)) {
-        const parsed = await parseUserWorkbook(file);
+        const parsed = await parseUserWorkbook(file, existingUsers);
         if (parsed.length === 0) {
           setErrorMsg('El archivo Excel no contiene filas de datos o solo tiene encabezados.');
         } else {
@@ -55,7 +61,7 @@ export const UserImportModal: React.FC<UserImportModalProps> = ({ isOpen, onClos
       reader.onload = (e) => {
         try {
           const text = String(e.target?.result || '');
-          const parsed = parseUserCsv(text);
+          const parsed = parseUserCsv(text, existingUsers);
           if (parsed.length === 0) {
             setErrorMsg('El archivo no contiene registros o solo contiene encabezados.');
           } else {
@@ -136,7 +142,7 @@ export const UserImportModal: React.FC<UserImportModalProps> = ({ isOpen, onClos
             <div className="flex items-center gap-2 shrink-0">
               <button
                 type="button"
-                onClick={() => void downloadUserExcelWorkbook()}
+                onClick={() => void downloadUserExcelWorkbook(existingUsers)}
                 className="px-3.5 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
               >
                 <Download className="w-3.5 h-3.5" />
@@ -144,7 +150,7 @@ export const UserImportModal: React.FC<UserImportModalProps> = ({ isOpen, onClos
               </button>
               <button
                 type="button"
-                onClick={downloadUserCsvTemplate}
+                onClick={() => downloadUserCsvTemplate(existingUsers)}
                 className="px-3 py-2 rounded-xl bg-white border border-stone-200 text-stone-700 hover:bg-stone-50 text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer"
                 title="Descargar versión ligera CSV"
               >

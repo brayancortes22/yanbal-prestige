@@ -421,6 +421,7 @@ export const AdminUsersView: React.FC = () => {
           isOpen={isImportOpen}
           onClose={() => setIsImportOpen(false)}
           onImport={handleImportUsers}
+          existingUsers={users}
         />
       </div>
     </div>
