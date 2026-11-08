@@ -18,15 +18,18 @@ public class AuthController : ControllerBase
     private readonly IAuthService _authService;
     private readonly ITurnstileService _turnstileService;
     private readonly IWebHostEnvironment _environment;
+    private readonly IAuditService _audit;
 
     public AuthController(
         IAuthService authService,
         ITurnstileService turnstileService,
-        IWebHostEnvironment environment)
+        IWebHostEnvironment environment,
+        IAuditService audit)
     {
         _authService = authService;
         _turnstileService = turnstileService;
         _environment = environment;
+        _audit = audit;
     }
 
     [HttpPost("login")]
@@ -158,7 +161,10 @@ public class AuthController : ControllerBase
             }
         }
 
+        var isNew = existing == null;
         var user = await _authService.SaveUserAsync(userDto);
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+        await _audit.LogAsync(currentId, isNew ? "CREAR_USUARIO" : "MODIFICAR_USUARIO", "usuarios", user.Id, new { user.Email, user.FullName, Role = user.Role.ToString() }, ip);
         return Ok(user);
     }
 
@@ -193,6 +199,8 @@ public class AuthController : ControllerBase
 
         var success = await _authService.ToggleUserStatusAsync(id);
         if (!success) return NotFound();
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+        await _audit.LogAsync(currentId, "TOGGLE_ESTADO_USUARIO", "usuarios", id, new { target.Email, target.FullName }, ip);
         return Ok(new { success = true });
     }
 
@@ -227,6 +235,8 @@ public class AuthController : ControllerBase
 
         var success = await _authService.DeleteUserAsync(id);
         if (!success) return NotFound();
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+        await _audit.LogAsync(currentId, "ELIMINAR_USUARIO", "usuarios", id, new { target.Email, target.FullName }, ip);
         return Ok(new { success = true });
     }
 }

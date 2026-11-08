@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Layers, Sparkles, BookOpen, Video, Calendar, FileText, Lightbulb, Briefcase, Scale, Share2 } from 'lucide-react';
 import { AdminNav } from '../../components/admin/AdminNav';
 import { CmsHeroSection } from '../../components/admin/cms/CmsHeroSection';
@@ -92,7 +93,7 @@ const SECTION_META: Record<
 };
 
 export const AdminContentCMSView: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<CmsTab>('hero');
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const tabs = [
     { id: 'hero' as CmsTab, label: 'Hero Carrusel', icon: Layers },
@@ -106,6 +107,13 @@ export const AdminContentCMSView: React.FC = () => {
     { id: 'legal' as CmsTab, label: 'Legal', icon: Scale },
     { id: 'footer' as CmsTab, label: 'Pie & Redes', icon: Share2 },
   ];
+
+  const tabParam = searchParams.get('tab') as CmsTab | null;
+  const activeTab: CmsTab = tabParam && tabs.some((t) => t.id === tabParam) ? tabParam : 'hero';
+
+  const handleTabChange = (tabId: CmsTab) => {
+    setSearchParams({ tab: tabId });
+  };
 
   return (
     <div className="bg-brand-cream min-h-[85vh] animate-fadeIn">
@@ -136,7 +144,9 @@ export const AdminContentCMSView: React.FC = () => {
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                id={'cms-tab-' + tab.id}
+                type="button"
+                onClick={() => handleTabChange(tab.id)}
                 className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
                   isActive
                     ? 'bg-orange-600 text-white shadow-xs'

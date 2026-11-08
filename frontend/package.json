@@ -8,7 +8,12 @@
     "build:css": "npx @tailwindcss/cli -i src/index.css -o src/tailwind.css",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:k6": "powershell -ExecutionPolicy Bypass -File ../tests-k6/run-k6.ps1",
+    "test:k6:extreme": "powershell -ExecutionPolicy Bypass -File ../tests-k6/run-k6.ps1 -Suite extreme",
+    "test:k6:lifecycle": "powershell -ExecutionPolicy Bypass -File ../tests-k6/run-k6.ps1 -Suite lifecycle",
+    "test:lighthouse": "npx @unlighthouse/cli --site http://127.0.0.1:5173",
+    "test:e2e": "npx playwright test"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",

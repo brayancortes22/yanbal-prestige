@@ -255,6 +255,7 @@ interface ConfigContextType {
   deleteHeroSlide: (id: string) => void;
   linesAccordion: LineAccordionItem[];
   saveLineAccordion: (line: LineAccordionItem) => void;
+  deleteLineAccordion: (id: string) => void;
   digitalCatalog: DigitalCatalogConfig;
   setDigitalCatalog: (cfg: DigitalCatalogConfig) => void;
   videoTips: VideoTipItem[];
@@ -713,7 +714,13 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // CRUD Líneas
   const saveLineAccordion = (line: LineAccordionItem) => {
-    setLinesAccordion((prev) => prev.map((l) => (l.id === line.id ? line : l)));
+    setLinesAccordion((prev) => {
+      const exists = prev.some((l) => l.id === line.id);
+      return exists ? prev.map((l) => (l.id === line.id ? line : l)) : [...prev, line];
+    });
+  };
+  const deleteLineAccordion = (id: string) => {
+    setLinesAccordion((prev) => prev.filter((l) => l.id !== id));
   };
 
   // CRUD Videos
@@ -784,7 +791,7 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         clients, addClient, updateClient, deleteClient,
         events, saveEvent, deleteEvent,
         heroSlides, saveHeroSlide, toggleHeroSlide, deleteHeroSlide,
-        linesAccordion, saveLineAccordion,
+        linesAccordion, saveLineAccordion, deleteLineAccordion,
         digitalCatalog, setDigitalCatalog,
         videoTips, saveVideoTip, toggleVideoTip, deleteVideoTip,
         tips, saveTip, toggleTip, deleteTip,

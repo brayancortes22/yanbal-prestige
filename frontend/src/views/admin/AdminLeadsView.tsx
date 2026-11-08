@@ -1,40 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  MessageCircle,
-  ShieldCheck,
-  MapPin,
-  Calendar,
-  Mail,
-  ChevronDown,
-  ChevronUp,
-  UserPlus,
-  Loader2,
-} from 'lucide-react';
+import { Loader2, Search, Filter } from 'lucide-react';
 import { AdminNav } from '../../components/admin/AdminNav';
+import { AdminLeadsTable } from '../../components/admin/leads/AdminLeadsTable';
+import { PaginationControls } from '../../components/common/PaginationControls';
 import { api, isApiConfigured } from '../../services/api';
 import { useToast } from '../../components/ui/ToastProvider';
 import type { LeadProspect } from '../../types';
 
-const ROLE_LABELS: Record<string, string> = {
-  consultora: 'Consultora de Belleza',
-  directora: 'Líder / Directora',
-  cliente: 'Clienta con asesoría',
-};
-
-const formatDate = (value?: string) => {
-  if (!value) return 'Sin fecha';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime())
-    ? value
-    : date.toLocaleString('es-CO', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      });
-};
+const PAGE_SIZE = 15;
 
 export const AdminLeadsView: React.FC = () => {
   const navigate = useNavigate();
@@ -43,6 +17,9 @@ export const AdminLeadsView: React.FC = () => {
   const [loading, setLoading] = useState(isApiConfigured());
   const [error, setError] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [roleFilter, setRoleFilter] = useState('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     if (!isApiConfigured()) {
@@ -74,6 +51,24 @@ export const AdminLeadsView: React.FC = () => {
     };
   }, []);
 
+  const filteredLeads = useMemo(() => {
+    return leads.filter((l) => {
+      const matchesSearch =
+        !searchTerm ||
+        l.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        l.phone.includes(searchTerm) ||
+        (l.city && l.city.toLowerCase().includes(searchTerm.toLowerCase()));
+      const matchesRole = roleFilter === 'ALL' || l.roleInterest === roleFilter;
+      return matchesSearch && matchesRole;
+    });
+  }, [leads, searchTerm, roleFilter]);
+
+  const totalPages = Math.ceil(filteredLeads.length / PAGE_SIZE);
+  const paginatedLeads = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredLeads.slice(start, start + PAGE_SIZE);
+  }, [filteredLeads, currentPage]);
+
   const handleCreateUser = (lead: LeadProspect) => {
     navigate('/admin/usuarios', { state: { lead } });
     notify(`Datos de ${lead.fullName} cargados en el formulario de alta.`, 'info');
@@ -93,18 +88,68 @@ export const AdminLeadsView: React.FC = () => {
               Aspirantes Registradas en "Trabaja con nosotros"
             </h2>
             <p className="text-xs text-stone-500">
-              Prospectos captados por el formulario público. Ábrelos para ver todos sus datos y
-              convertirlos en integrantes de la red sin volver a escribirlos.
+              Prospectos captados por el formulario público. Supervisa en tabla institucional, contacta por WhatsApp y da de alta en la red.
             </p>
           </div>
-          <span className="rounded-xl border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-semibold text-orange-700">
-            {loading ? 'Cargando…' : `${leads.length} aspirante${leads.length === 1 ? '' : 's'}`}
+          <span className="rounded-xl border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-semibold text-orange-700 self-start sm:self-auto">
+            {loading ? 'Cargando…' : `${leads.length} aspirantes`}
           </span>
         </div>
 
+        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between bg-white/70 p-3 rounded-2xl border border-stone-200/70 shadow-xs">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-stone-400" />
+            <input
+              type="text"
+              placeholder="Buscar por nombre, teléfono o ciudad..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-stone-200 bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-stone-400 hidden sm:inline" />
+            <select
+              value={roleFilter}
+              onChange={(e) => {
+                setRoleFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="px-3 py-2 text-xs rounded-xl border border-stone-200 bg-white font-medium text-stone-700 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+            >
+              <option value="ALL">Todos los intereses</option>
+              <option value="consultora">Consultora</option>
+              <option value="directora">Líder / Directora</option>
+              <option value="cliente">Clienta</option>
+            </select>
+          </div>
+        </div>
+
         {error && (
-          <div className="rounded-2xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">
-            {error}
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+            <div>
+              <p className="font-bold">
+                {error.includes('401') ? 'Tu sesión ha caducado o requiere reautenticación.' : error}
+              </p>
+              {error.includes('401') && (
+                <p className="text-[11px] text-rose-600 mt-0.5">
+                  Por seguridad, la sesión administrativa expira tras inactividad. Inicia sesión nuevamente para ver y procesar los prospectos.
+                </p>
+              )}
+            </div>
+            {error.includes('401') && (
+              <button
+                type="button"
+                onClick={() => navigate('/login')}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs transition-colors shrink-0 cursor-pointer shadow-xs"
+              >
+                Iniciar Sesión
+              </button>
+            )}
           </div>
         )}
 
@@ -113,116 +158,24 @@ export const AdminLeadsView: React.FC = () => {
             <div className="flex items-center justify-center gap-2 p-12 text-xs text-stone-500">
               <Loader2 className="h-4 w-4 animate-spin" /> Cargando prospectos…
             </div>
-          ) : leads.length === 0 ? (
-            <div className="p-12 text-center text-xs text-stone-400">
-              Aún no hay postulaciones. Cuando alguien envíe el formulario de “Trabaja con
-              nosotros”, aparecerá aquí.
-            </div>
           ) : (
-            <div className="divide-y divide-stone-100">
-              {leads.map((lead, index) => {
-                const id = lead.id || `lead-${index}`;
-                const expanded = expandedId === id;
-                const phone = lead.phone.replace(/[^0-9]/g, '');
-                return (
-                  <div key={id} className="p-4">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <strong className="text-sm text-stone-900">{lead.fullName}</strong>
-                          <span className="rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-bold text-orange-700">
-                            {ROLE_LABELS[lead.roleInterest] || lead.roleInterest}
-                          </span>
-                          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-                            <ShieldCheck className="mr-1 inline h-3 w-3" /> Habeas Data
-                          </span>
-                        </div>
-                        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-stone-500">
-                          <span className="inline-flex items-center gap-1">
-                            <MapPin className="h-3 w-3" /> {lead.city}
-                            {lead.department ? `, ${lead.department}` : ''}
-                          </span>
-                          <span className="inline-flex items-center gap-1">
-                            <Calendar className="h-3 w-3" /> {formatDate(lead.createdAt)}
-                          </span>
-                          {lead.email && (
-                            <span className="inline-flex items-center gap-1">
-                              <Mail className="h-3 w-3" /> {lead.email}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setExpandedId(expanded ? null : id)}
-                          className="inline-flex cursor-pointer items-center gap-1 rounded-xl border border-stone-200 bg-stone-50 px-3 py-1.5 text-[11px] font-semibold text-stone-600 hover:bg-stone-100"
-                        >
-                          {expanded ? (
-                            <ChevronUp className="h-3.5 w-3.5" />
-                          ) : (
-                            <ChevronDown className="h-3.5 w-3.5" />
-                          )}
-                          {expanded ? 'Ocultar datos' : 'Ver más datos'}
-                        </button>
-                        <a
-                          href={`https://wa.me/${phone}?text=${encodeURIComponent(
-                            `Hola ${lead.fullName}, te escribe la Directora Yuli de Yanbal Prestige. Vi tu postulación y quiero contarte el plan de carrera.`
-                          )}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 rounded-xl bg-emerald-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-emerald-700"
-                        >
-                          <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
-                        </a>
-                        <button
-                          type="button"
-                          onClick={() => handleCreateUser(lead)}
-                          className="inline-flex cursor-pointer items-center gap-1 rounded-xl bg-stone-900 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-stone-800"
-                        >
-                          <UserPlus className="h-3.5 w-3.5" /> Crear integrante
-                        </button>
-                      </div>
-                    </div>
-
-                    {expanded && (
-                      <div className="mt-3 grid grid-cols-1 gap-3 rounded-2xl border border-stone-200 bg-stone-50/70 p-3 text-[11px] sm:grid-cols-2 lg:grid-cols-4">
-                        <div>
-                          <span className="block font-bold uppercase text-stone-400">Teléfono</span>
-                          <span className="text-stone-700">{lead.phone}</span>
-                        </div>
-                        <div>
-                          <span className="block font-bold uppercase text-stone-400">Correo</span>
-                          <span className="text-stone-700">{lead.email || 'No indicado'}</span>
-                        </div>
-                        <div>
-                          <span className="block font-bold uppercase text-stone-400">Ciudad</span>
-                          <span className="text-stone-700">
-                            {lead.city}
-                            {lead.department ? ` · ${lead.department}` : ''}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="block font-bold uppercase text-stone-400">Dirección</span>
-                          <span className="text-stone-700">{lead.address || 'No indicada'}</span>
-                        </div>
-                        <div className="sm:col-span-2 lg:col-span-4">
-                          <span className="block font-bold uppercase text-stone-400">
-                            Experiencia / motivación
-                          </span>
-                          <span className="text-stone-700">
-                            {lead.experience || 'Sin comentarios adicionales.'}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+            <AdminLeadsTable
+              leads={paginatedLeads}
+              expandedId={expandedId}
+              onToggleExpand={(id) => setExpandedId(expandedId === id ? null : id)}
+              onCreateUser={handleCreateUser}
+            />
           )}
         </div>
+
+        <PaginationControls
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filteredLeads.length}
+          pageSize={PAGE_SIZE}
+          onPageChange={setCurrentPage}
+          itemName="aspirantes"
+        />
       </div>
     </div>
   );
