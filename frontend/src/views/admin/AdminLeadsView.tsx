@@ -2,13 +2,13 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, Search, Filter } from 'lucide-react';
 import { AdminNav } from '../../components/admin/AdminNav';
-import { LeadCard } from '../../components/admin/LeadCard';
+import { AdminLeadsTable } from '../../components/admin/leads/AdminLeadsTable';
 import { PaginationControls } from '../../components/common/PaginationControls';
 import { api, isApiConfigured } from '../../services/api';
 import { useToast } from '../../components/ui/ToastProvider';
 import type { LeadProspect } from '../../types';
 
-const PAGE_SIZE = 12;
+const PAGE_SIZE = 15;
 
 export const AdminLeadsView: React.FC = () => {
   const navigate = useNavigate();
@@ -88,7 +88,7 @@ export const AdminLeadsView: React.FC = () => {
               Aspirantes Registradas en "Trabaja con nosotros"
             </h2>
             <p className="text-xs text-stone-500">
-              Prospectos captados por el formulario público. Ábrelos para ver todos sus datos y convertirlos en integrantes.
+              Prospectos captados por el formulario público. Supervisa en tabla institucional, contacta por WhatsApp y da de alta en la red.
             </p>
           </div>
           <span className="rounded-xl border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-semibold text-orange-700 self-start sm:self-auto">
@@ -96,7 +96,6 @@ export const AdminLeadsView: React.FC = () => {
           </span>
         </div>
 
-        {/* Barra de Filtros y Búsqueda */}
         <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between bg-white/70 p-3 rounded-2xl border border-stone-200/70 shadow-xs">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-stone-400" />
@@ -131,8 +130,26 @@ export const AdminLeadsView: React.FC = () => {
         </div>
 
         {error && (
-          <div className="rounded-2xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">
-            {error}
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+            <div>
+              <p className="font-bold">
+                {error.includes('401') ? 'Tu sesión ha caducado o requiere reautenticación.' : error}
+              </p>
+              {error.includes('401') && (
+                <p className="text-[11px] text-rose-600 mt-0.5">
+                  Por seguridad, la sesión administrativa expira tras inactividad. Inicia sesión nuevamente para ver y procesar los prospectos.
+                </p>
+              )}
+            </div>
+            {error.includes('401') && (
+              <button
+                type="button"
+                onClick={() => navigate('/login')}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs transition-colors shrink-0 cursor-pointer shadow-xs"
+              >
+                Iniciar Sesión
+              </button>
+            )}
           </div>
         )}
 
@@ -141,25 +158,13 @@ export const AdminLeadsView: React.FC = () => {
             <div className="flex items-center justify-center gap-2 p-12 text-xs text-stone-500">
               <Loader2 className="h-4 w-4 animate-spin" /> Cargando prospectos…
             </div>
-          ) : filteredLeads.length === 0 ? (
-            <div className="p-12 text-center text-xs text-stone-400">
-              No se encontraron postulaciones con los criterios de búsqueda.
-            </div>
           ) : (
-            <div className="divide-y divide-stone-100">
-              {paginatedLeads.map((lead, index) => {
-                const id = lead.id || `lead-${index}`;
-                return (
-                  <LeadCard
-                    key={id}
-                    lead={lead}
-                    expanded={expandedId === id}
-                    onToggleExpand={() => setExpandedId(expandedId === id ? null : id)}
-                    onCreateUser={handleCreateUser}
-                  />
-                );
-              })}
-            </div>
+            <AdminLeadsTable
+              leads={paginatedLeads}
+              expandedId={expandedId}
+              onToggleExpand={(id) => setExpandedId(expandedId === id ? null : id)}
+              onCreateUser={handleCreateUser}
+            />
           )}
         </div>
 

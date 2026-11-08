@@ -7,6 +7,7 @@ import {
   getBalance,
   getPaidAmount,
 } from '../../utils/payments';
+import { SearchableConsultantSelect } from './SearchableConsultantSelect';
 
 interface AdminSalesRowProps {
   order: Order;
@@ -37,21 +38,12 @@ export const AdminSalesRow: React.FC<AdminSalesRowProps> = ({
         <p className="text-[11px] text-stone-400">{ord.clientPhone}</p>
       </td>
       <td className="py-3 px-4">
-        <select
-          value={ord.consultantId}
-          onChange={(e) => void onAssign(ord, e.target.value)}
-          className="p-1.5 text-xs rounded-lg border border-stone-200 bg-stone-50 text-stone-800 font-medium max-w-[180px] truncate"
-        >
-          {!consultants.some((c) => c.id === ord.consultantId) && (
-            <option value={ord.consultantId}>{ord.consultantName}</option>
-          )}
-          {consultants.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name.replace(/\s*\([^)]*\)\s*$/, '')}
-              {c.role === 'LIDER_ZONA' ? ' · Líder' : ' · Consultora'}
-            </option>
-          ))}
-        </select>
+        <SearchableConsultantSelect
+          currentId={ord.consultantId}
+          currentName={ord.consultantName}
+          consultants={consultants}
+          onSelect={(consultantId) => void onAssign(ord, consultantId)}
+        />
       </td>
       <td className="py-3 px-4 font-bold text-stone-900">{formatCop(ord.totalAmount)}</td>
       <td className="py-3 px-4">

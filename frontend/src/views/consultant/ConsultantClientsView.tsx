@@ -1,17 +1,16 @@
 import React, { useState, useMemo } from 'react';
 import { Plus, Search } from 'lucide-react';
 import { ConsultantNav } from '../../components/consultant/ConsultantNav';
-import { ClientCard } from '../../components/consultant/ClientCard';
+import { ConsultantClientsTable } from '../../components/consultant/ConsultantClientsTable';
 import { ClientForm } from '../../components/consultant/ClientForm';
 import { PaginationControls } from '../../components/common/PaginationControls';
-import { ClientCardSkeleton } from '../../components/common/skeletons/ClientCardSkeleton';
 import { useConfig } from '../../context/ConfigContext';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../components/ui/ToastProvider';
 import { useConfirm } from '../../components/ui/ConfirmProvider';
 import type { ConsultantClient } from '../../types';
 
-const PAGE_SIZE = 16;
+const PAGE_SIZE = 15;
 
 export const ConsultantClientsView: React.FC = () => {
   const { clients, users, addClient, updateClient, deleteClient } = useConfig();
@@ -39,7 +38,6 @@ export const ConsultantClientsView: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [skinFilter, setSkinFilter] = useState('todas');
   const [catFilter, setCatFilter] = useState('todas');
-  const [isTransitioning, setIsTransitioning] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
   // Formulario Crear / Editar
@@ -148,13 +146,6 @@ export const ConsultantClientsView: React.FC = () => {
     updateClient({ ...c, lastContactDate: new Date().toISOString().split('T')[0] });
   };
 
-  const handleFilterChange = (setter: (v: string) => void, val: string) => {
-    setIsTransitioning(true);
-    setter(val);
-    setCurrentPage(1);
-    setTimeout(() => setIsTransitioning(false), 200);
-  };
-
   const filteredClients = useMemo(() => {
     return visibleClients.filter((c) => {
       const matchSearch =
@@ -187,7 +178,7 @@ export const ConsultantClientsView: React.FC = () => {
               Mis Clientas & Rutinas Recomendadas
             </h2>
             <p className="text-xs text-stone-500">
-              Registra preferencias dermatológicas, edita fichas y mantén contacto directo por WhatsApp.
+              Supervisa la cartera de clientas en tabla interactiva, mantén contacto por WhatsApp y registra preferencias dermatológicas.
             </p>
           </div>
 
@@ -249,7 +240,10 @@ export const ConsultantClientsView: React.FC = () => {
           <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
             <select
               value={skinFilter}
-              onChange={(e) => handleFilterChange(setSkinFilter, e.target.value)}
+              onChange={(e) => {
+                setSkinFilter(e.target.value);
+                setCurrentPage(1);
+              }}
               className="p-2 text-xs rounded-xl border border-stone-200 bg-stone-50/50 text-stone-700 font-medium"
             >
               <option value="todas">Todos los Tipos de Piel</option>
@@ -262,7 +256,10 @@ export const ConsultantClientsView: React.FC = () => {
 
             <select
               value={catFilter}
-              onChange={(e) => handleFilterChange(setCatFilter, e.target.value)}
+              onChange={(e) => {
+                setCatFilter(e.target.value);
+                setCurrentPage(1);
+              }}
               className="p-2 text-xs rounded-xl border border-stone-200 bg-stone-50/50 text-stone-700 font-medium"
             >
               <option value="todas">Todas las Preferencias</option>
@@ -275,29 +272,14 @@ export const ConsultantClientsView: React.FC = () => {
           </div>
         </div>
 
-        {isTransitioning ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <ClientCardSkeleton count={2} />
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {paginatedClients.map((client) => (
-              <ClientCard
-                key={client.id}
-                client={client}
-                onEdit={handleOpenEdit}
-                onDelete={handleDeleteClient}
-                onMarkContactToday={handleMarkContactToday}
-              />
-            ))}
-          </div>
-        )}
-
-        {filteredClients.length === 0 && !isTransitioning && (
-          <div className="p-12 text-center bg-white rounded-3xl border border-stone-200/80 text-stone-400 text-xs">
-            No se encontraron clientas registradas con los filtros seleccionados.
-          </div>
-        )}
+        <div className="bg-white rounded-3xl border border-stone-200/80 shadow-xs overflow-hidden">
+          <ConsultantClientsTable
+            clients={paginatedClients}
+            onEdit={handleOpenEdit}
+            onDelete={handleDeleteClient}
+            onMarkContactToday={handleMarkContactToday}
+          />
+        </div>
 
         <PaginationControls
           currentPage={currentPage}
