@@ -1,0 +1,68 @@
+{
+  "timestamp": "2026-11-08T12:10:00-05:00",
+  "project": "yanbal-prestige",
+  "environment": "Development (Local Vite + Kestrel .NET 10 + MySQL)",
+  "tester": "Brayan Stid Cortés Lombana (bscl) & Antigravity CDP Pair",
+  "summary": "Auditoría en vivo de alta densidad de datos. Erradicación de scrolls infinitos, adición de paginación uniforme Ponytail y fijación de cabeceras sticky.",
+  "results": [
+    {
+      "route": "/admin/prospectos",
+      "name": "Aspirantes Únete (500 prospectos)",
+      "beforeHeightPx": 37637,
+      "afterHeightPx": 1934,
+      "reductionPercent": 94.8,
+      "pageSize": 12,
+      "status": "PASS",
+      "evidence": "cap_admin_prospectos_paginated.jpeg"
+    },
+    {
+      "route": "/admin/ventas",
+      "name": "Facturas & Despachos (100 órdenes x 138 consultoras)",
+      "beforeHeightPx": 9998,
+      "afterHeightPx": 1661,
+      "reductionPercent": 83.3,
+      "pageSize": 15,
+      "domOptionsBefore": 14200,
+      "domOptionsAfter": 2130,
+      "status": "PASS",
+      "evidence": "cap_admin_ventas_paginated.jpeg"
+    },
+    {
+      "route": "/admin/usuarios",
+      "name": "Equipo & Roles de la Red (142 integrantes)",
+      "beforeHeightPx": 13265,
+      "afterHeightPx": 2007,
+      "reductionPercent": 84.8,
+      "pageSize": 15,
+      "status": "PASS",
+      "evidence": "cap_admin_usuarios_paginated.jpeg"
+    },
+    {
+      "route": "/admin/catalogo",
+      "name": "Catálogo Centralizado & SKU (168 productos)",
+      "beforeHeightPx": 1820,
+      "afterHeightPx": 1644,
+      "pageSizeBefore": 6,
+      "pageSizeAfter": 12,
+      "pagesCountBefore": 28,
+      "pagesCountAfter": 14,
+      "status": "PASS",
+      "evidence": "cap_admin_catalogo_paginated.jpeg"
+    },
+    {
+      "route": "/consultora/clientes",
+      "name": "Cartera CRM Clientas (495 clientas)",
+      "beforeHeightPx": 56194,
+      "afterHeightPx": 2823,
+      "reductionPercent": 94.9,
+      "pageSize": 16,
+      "status": "PASS",
+      "evidence": "cap_consultora_clientes_paginated.jpeg"
+    }
+  ],
+  "browserMetrics": {
+    "consoleErrors": 0,
+    "unhandledRejections": 0,
+    "activeSession": "yulieth.directora@yanbalprestige.com (DIRECTORA)"
+  }
+}

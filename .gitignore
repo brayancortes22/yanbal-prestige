@@ -21,3 +21,8 @@ Thumbs.db
 .DS_Store
 
 .vercel
+
+# QA visual captures
+cap_*.png
+cap_*.jpeg
+

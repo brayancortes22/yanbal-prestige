@@ -9,7 +9,7 @@ interface Props {
   onToggle: (id: string) => void;
 }
 
-const ITEMS_PER_PAGE = 6;
+const ITEMS_PER_PAGE = 12;
 
 export const ProductTable: React.FC<Props> = ({ products, onEdit, onDelete, onToggle }) => {
   const [currentPage, setCurrentPage] = useState(1);
@@ -20,9 +20,9 @@ export const ProductTable: React.FC<Props> = ({ products, onEdit, onDelete, onTo
 
   return (
     <div className="bg-white rounded-3xl border border-stone-200/80 shadow-xs overflow-hidden">
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
         <table className="w-full text-left text-xs">
-          <thead className="bg-stone-50 text-stone-500 font-semibold border-b border-stone-100">
+          <thead className="sticky top-0 z-10 bg-stone-50/95 backdrop-blur text-stone-500 font-semibold border-b border-stone-200 shadow-2xs">
             <tr>
               <th className="p-4">Código / SKU</th>
               <th className="p-4">Producto</th>
@@ -60,40 +60,48 @@ export const ProductTable: React.FC<Props> = ({ products, onEdit, onDelete, onTo
                     )}
                   </div>
                 </td>
-                <td className="p-4 text-stone-600">{product.categoryLabel}</td>
+                <td className="p-4 capitalize text-stone-600">{product.category}</td>
                 <td className="p-4 font-bold text-stone-900">
                   ${product.price.toLocaleString('es-CO')}
                 </td>
                 <td className="p-4">
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border ${
+                      product.active
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : 'bg-stone-100 text-stone-500 border-stone-200'
+                    }`}
+                  >
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        product.active ? 'bg-emerald-500' : 'bg-stone-400'
+                      }`}
+                    />
+                    {product.active ? 'En Catálogo' : 'Pausado'}
+                  </span>
+                </td>
+                <td className="p-4 text-right space-x-1 whitespace-nowrap">
                   <button
                     type="button"
                     onClick={() => onToggle(product.id)}
-                    className={`px-3 py-1 rounded-full text-[10px] font-bold border flex items-center gap-1.5 cursor-pointer transition-all ${
-                      product.active
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                        : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
-                    }`}
-                    title="Clic para pausar o activar en catálogo"
+                    className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-lg transition-colors cursor-pointer"
+                    title={product.active ? 'Pausar referencia' : 'Activar referencia'}
                   >
-                    <Power className="w-3 h-3" />
-                    <span>{product.active ? 'En Catálogo' : 'Pausado / Agotado'}</span>
+                    <Power className="w-4 h-4" />
                   </button>
-                </td>
-                <td className="p-4 text-right space-x-1">
                   <button
                     type="button"
                     onClick={() => onEdit(product)}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-orange-50 text-stone-600 hover:text-orange-700 font-semibold text-[11px] transition-colors cursor-pointer"
-                    title="Editar referencia"
+                    className="p-1.5 text-stone-600 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors cursor-pointer"
+                    title="Editar datos y fotos"
                   >
-                    <Edit3 className="w-3.5 h-3.5" />
-                    <span>Editar</span>
+                    <Edit3 className="w-4 h-4" />
                   </button>
                   <button
                     type="button"
                     onClick={() => onDelete(product.id, product.name)}
-                    className="p-1.5 text-stone-300 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
-                    title="Eliminar referencia"
+                    className="p-1.5 text-stone-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                    title="Eliminar del catálogo"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>

@@ -5,12 +5,15 @@ import { AdminNav } from '../../components/admin/AdminNav';
 import { UserForm } from '../../components/admin/users/UserForm';
 import { UserTable } from '../../components/admin/users/UserTable';
 import { ResetRequestsPanel } from '../../components/admin/users/ResetRequestsPanel';
+import { PaginationControls } from '../../components/common/PaginationControls';
 import { useConfig } from '../../context/ConfigContext';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../components/ui/ToastProvider';
 import { useConfirm } from '../../components/ui/ConfirmProvider';
 import { roleCounts, roleLabel } from '../../components/admin/users/roleConfig';
 import type { AppUser, LeadProspect, UserRole } from '../../types';
+
+const PAGE_SIZE = 15;
 
 export const AdminUsersView: React.FC = () => {
   const {
@@ -27,6 +30,7 @@ export const AdminUsersView: React.FC = () => {
   const [roleFilter, setRoleFilter] = useState<string>('todos');
   const [teamFilter, setTeamFilter] = useState<string>('todos');
   const [statusFilter, setStatusFilter] = useState<'todos' | 'activas' | 'inactivas'>('todos');
+  const [currentPage, setCurrentPage] = useState(1);
   const [isEditing, setIsEditing] = useState(false);
   const [editingUser, setEditingUser] = useState<AppUser | null>(null);
   const [prefill, setPrefill] = useState<Partial<AppUser> | null>(null);
@@ -77,6 +81,12 @@ export const AdminUsersView: React.FC = () => {
     });
   }, [users, searchTerm, roleFilter, teamFilter, statusFilter]);
 
+  const totalPages = Math.ceil(filteredUsers.length / PAGE_SIZE);
+  const paginatedUsers = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredUsers.slice(start, start + PAGE_SIZE);
+  }, [filteredUsers, currentPage]);
+
   const handleSave = (user: AppUser) => {
     const isNew = !editingUser;
     saveUser(user);
@@ -113,7 +123,7 @@ export const AdminUsersView: React.FC = () => {
   const handleDelete = async (user: AppUser) => {
     const accepted = await confirm({
       title: '¿Dar de baja a esta integrante?',
-      message: `${user.name} se eliminará del directorio. Sus ventas históricas se conservan, pero no podrá volver a ingresar.`,
+      message: `${user.name} se eliminará del directorio. Sus ventas históricas se conservan.`,
       confirmText: 'Sí, dar de baja',
       tone: 'danger',
     });
@@ -126,26 +136,18 @@ export const AdminUsersView: React.FC = () => {
     if (user.role === nextRole) return;
 
     if (currentEmail && user.email.toLowerCase() === currentEmail.toLowerCase()) {
-      notify(
-        'No puedes cambiar tu propio rol. Pide a otra administradora que lo haga.',
-        'error'
-      );
+      notify('No puedes cambiar tu propio rol. Pide a otra administradora que lo haga.', 'error');
       return;
     }
 
     if (user.role === 'DIRECTORA' && nextRole !== 'DIRECTORA' && activeDirectors <= 1) {
-      notify(
-        'Debe quedar al menos una administradora activa. Asigna ese rol a otra persona antes de cambiarlo.',
-        'error'
-      );
+      notify('Debe quedar al menos una administradora activa.', 'error');
       return;
     }
 
     const accepted = await confirm({
       title: `¿Cambiar el rol de ${user.name}?`,
-      message: `Pasará de ${roleLabel(user.role)} a ${roleLabel(
-        nextRole
-      )}. El nuevo rol se aplicará cuando vuelva a iniciar sesión.`,
+      message: `Pasará de ${roleLabel(user.role)} a ${roleLabel(nextRole)}.`,
       confirmText: 'Sí, cambiar rol',
       tone: 'primary',
     });
@@ -185,7 +187,6 @@ export const AdminUsersView: React.FC = () => {
     scrollToForm();
   };
 
-  // Alta rápida desde un prospecto de “Trabaja con nosotros”.
   useEffect(() => {
     const lead = (location.state as { lead?: LeadProspect } | null)?.lead;
     if (!lead || handledLeadRef.current) return;
@@ -218,8 +219,7 @@ export const AdminUsersView: React.FC = () => {
               Equipo, roles y equipos de líderes
             </h2>
             <p className="max-w-2xl text-xs text-stone-500">
-              Define quién administra, quién lidera un equipo y qué consultoras reportan a cada
-              líder. Una consultora sin líder queda marcada para asignación.
+              Supervisión del equipo, asignación de líderes y control de accesos centralizado.
             </p>
           </div>
           <button
@@ -286,7 +286,10 @@ export const AdminUsersView: React.FC = () => {
               type="text"
               placeholder="Buscar nombre, correo, cédula, zona o líder..."
               value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
+              onChange={(event) => {
+                setSearchTerm(event.target.value);
+                setCurrentPage(1);
+              }}
               className="w-full rounded-xl border border-stone-200 bg-stone-50/50 py-2 pl-10 pr-4 text-xs"
             />
           </div>
@@ -294,7 +297,10 @@ export const AdminUsersView: React.FC = () => {
           <div className="flex w-full flex-wrap items-center gap-2 md:w-auto">
             <select
               value={roleFilter}
-              onChange={(event) => setRoleFilter(event.target.value)}
+              onChange={(event) => {
+                setRoleFilter(event.target.value);
+                setCurrentPage(1);
+              }}
               className="rounded-xl border border-stone-200 bg-stone-50/50 p-2 text-xs font-medium text-stone-700"
             >
               <option value="todos">Todos los roles</option>
@@ -307,7 +313,10 @@ export const AdminUsersView: React.FC = () => {
 
             <select
               value={teamFilter}
-              onChange={(event) => setTeamFilter(event.target.value)}
+              onChange={(event) => {
+                setTeamFilter(event.target.value);
+                setCurrentPage(1);
+              }}
               className="rounded-xl border border-stone-200 bg-stone-50/50 p-2 text-xs font-medium text-stone-700"
             >
               <option value="todos">Todos los equipos</option>
@@ -321,9 +330,10 @@ export const AdminUsersView: React.FC = () => {
 
             <select
               value={statusFilter}
-              onChange={(event) =>
-                setStatusFilter(event.target.value as 'todos' | 'activas' | 'inactivas')
-              }
+              onChange={(event) => {
+                setStatusFilter(event.target.value as 'todos' | 'activas' | 'inactivas');
+                setCurrentPage(1);
+              }}
               className="rounded-xl border border-stone-200 bg-stone-50/50 p-2 text-xs font-medium text-stone-700"
             >
               <option value="todos">Todos los estados</option>
@@ -342,7 +352,7 @@ export const AdminUsersView: React.FC = () => {
             </span>
           </div>
           <UserTable
-            users={filteredUsers}
+            users={paginatedUsers}
             allUsers={users}
             currentEmail={currentEmail}
             canManageRoles
@@ -352,6 +362,15 @@ export const AdminUsersView: React.FC = () => {
             onDelete={handleDelete}
           />
         </div>
+
+        <PaginationControls
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filteredUsers.length}
+          pageSize={PAGE_SIZE}
+          onPageChange={setCurrentPage}
+          itemName="integrantes"
+        />
       </div>
     </div>
   );
