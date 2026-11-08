@@ -67,7 +67,14 @@ export interface AnnouncementConfig {
   updatedAt: string;
 }
 
+export interface AboutTimelineItem {
+  year: string;
+  title: string;
+  text: string;
+}
+
 export interface AboutContentConfig {
+  timeline?: AboutTimelineItem[];
   historyTag: string;
   historyTitle: string;
   historyDesc: string;
@@ -264,6 +271,7 @@ export interface LineAccordionItem {
   categoryFilter: 'rostro' | 'perfumes' | 'maquillaje' | 'joyeria' | 'solar';
   /** Producto fijado por la administradora; vacío = más vendido automático. */
   pinnedProductId?: string;
+  autoRotate?: boolean;
 }
 
 export interface EventItem {

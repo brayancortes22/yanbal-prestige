@@ -3,9 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { Award, ArrowRight } from 'lucide-react';
 import { useConfig } from '../context/ConfigContext';
 
+const DEFAULT_TIMELINE = [
+  { year: '2018', title: 'Nace la red', text: 'Un grupo pequeño de consultoras decide acompañar a sus clientas con asesoría real, no solo con un catálogo.' },
+  { year: '2021', title: 'Formación continua', text: 'Creamos rutinas de capacitación en dermocosmética, ventas y liderazgo para cada nueva integrante.' },
+  { year: '2024', title: 'Liderazgo de zona', text: 'Las líderes acompañan equipos completos, revisan metas y comparten buenas prácticas cada campaña.' },
+  { year: '2026', title: 'Comunidad digital', text: 'Digitalizamos catálogo, pedidos, abonos y facturas para que comprar y vender sea más claro y rápido.' },
+];
+
 export const AboutView: React.FC = () => {
   const navigate = useNavigate();
   const { aboutContent } = useConfig();
+  const timelineItems = aboutContent.timeline?.length ? aboutContent.timeline : DEFAULT_TIMELINE;
 
   return (
     <div className="py-16 bg-brand-cream min-h-[70vh] animate-fadeIn">
@@ -76,7 +84,7 @@ export const AboutView: React.FC = () => {
           </div>
         </div>
 
-        {/* Línea de tiempo */}
+        {/* Línea de tiempo dinámica */}
         <section className="space-y-6">
           <div className="text-center space-y-2">
             <span className="text-xs font-bold tracking-widest uppercase text-orange-600">
@@ -87,13 +95,8 @@ export const AboutView: React.FC = () => {
             </h2>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              { year: '2018', title: 'Nace la red', text: 'Un grupo pequeño de consultoras decide acompañar a sus clientas con asesoría real, no solo con un catálogo.' },
-              { year: '2021', title: 'Formación continua', text: 'Creamos rutinas de capacitación en dermocosmética, ventas y liderazgo para cada nueva integrante.' },
-              { year: '2024', title: 'Liderazgo de zona', text: 'Las líderes acompañan equipos completos, revisan metas y comparten buenas prácticas cada campaña.' },
-              { year: '2026', title: 'Comunidad digital', text: 'Digitalizamos catálogo, pedidos, abonos y facturas para que comprar y vender sea más claro y rápido.' },
-            ].map((item) => (
-              <div key={item.year} className="card-luxury rounded-3xl p-5 space-y-2">
+            {timelineItems.map((item, idx) => (
+              <div key={`${item.year}-${idx}`} className="card-luxury rounded-3xl p-5 space-y-2">
                 <span className="font-mono text-xs font-bold text-orange-600">{item.year}</span>
                 <h3 className="font-editorial text-base font-bold text-stone-900">{item.title}</h3>
                 <p className="text-[11px] leading-relaxed text-stone-600">{item.text}</p>

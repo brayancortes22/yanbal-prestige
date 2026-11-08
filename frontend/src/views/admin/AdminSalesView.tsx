@@ -1,20 +1,18 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Eye, Wallet, Ban, RotateCcw } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { AdminNav } from '../../components/admin/AdminNav';
 import { InvoiceModal } from '../../components/sales/InvoiceModal';
 import { RegisterPaymentModal } from '../../components/sales/RegisterPaymentModal';
+import { AdminSalesRow } from '../../components/sales/AdminSalesRow';
+import { PaginationControls } from '../../components/common/PaginationControls';
 import { useConfig } from '../../context/ConfigContext';
 import { useIdleTimer } from '../../hooks/useIdleTimer';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../components/ui/ToastProvider';
 import { useConfirm } from '../../components/ui/ConfirmProvider';
-import type { Order, DeliveryStatus } from '../../types';
-import {
-  PAYMENT_STATUS_LABELS,
-  formatCop,
-  getBalance,
-  getPaidAmount,
-} from '../../utils/payments';
+import type { Order } from '../../types';
+
+const PAGE_SIZE = 15;
 
 export const AdminSalesView: React.FC = () => {
   const { orders, users, updateOrderStatus, assignOrder, saveOrder } = useConfig();
@@ -24,23 +22,21 @@ export const AdminSalesView: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [paymentFilter, setPaymentFilter] = useState('todos');
   const [deliveryFilter, setDeliveryFilter] = useState('todos');
+  const [currentPage, setCurrentPage] = useState(1);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [paymentOrder, setPaymentOrder] = useState<Order | null>(null);
 
   useIdleTimer({ timeoutMs: 15 * 60 * 1000, onIdle: () => logout() });
 
   const consultants = useMemo(
-    () =>
-      users.filter(
-        (user) =>
-          user.active && ['CONSULTORA', 'LIDER_ZONA'].includes(user.role)
-      ),
+    () => users.filter((u) => u.active && ['CONSULTORA', 'LIDER_ZONA'].includes(u.role)),
     [users]
   );
 
   const filteredOrders = useMemo(() => {
     return orders.filter((ord) => {
       const matchSearch =
+        !searchTerm ||
         ord.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
         ord.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         ord.consultantName.toLowerCase().includes(searchTerm.toLowerCase());
@@ -50,22 +46,28 @@ export const AdminSalesView: React.FC = () => {
     });
   }, [orders, searchTerm, paymentFilter, deliveryFilter]);
 
+  const totalPages = Math.ceil(filteredOrders.length / PAGE_SIZE);
+  const paginatedOrders = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredOrders.slice(start, start + PAGE_SIZE);
+  }, [filteredOrders, currentPage]);
+
   const handleCancelOrder = async (ord: Order) => {
     const accepted = await confirm({
       title: '¿Anular esta factura?',
-      message: `La factura ${ord.invoiceNumber} de ${ord.clientName} quedará anulada para contabilidad. Los pagos registrados se conservan y luego puedes registrar una devolución.`,
+      message: `La factura ${ord.invoiceNumber} de ${ord.clientName} quedará anulada para contabilidad.`,
       confirmText: 'Sí, anular factura',
       tone: 'danger',
     });
     if (!accepted) return;
     updateOrderStatus(ord.id, undefined, 'cancelado');
-    notify(`Factura ${ord.invoiceNumber} anulada. Registra la devolución si hubo dinero recibido.`, 'info');
+    notify(`Factura ${ord.invoiceNumber} anulada.`, 'info');
   };
 
   const handleReactivateOrder = async (ord: Order) => {
     const accepted = await confirm({
       title: '¿Reactivar esta factura?',
-      message: `La factura ${ord.invoiceNumber} volverá a preparación y el estado de pago se recalculará con los movimientos registrados.`,
+      message: `La factura ${ord.invoiceNumber} volverá a preparación.`,
       confirmText: 'Sí, reactivar',
     });
     if (!accepted) return;
@@ -78,7 +80,7 @@ export const AdminSalesView: React.FC = () => {
     if (!consultant) return;
     const accepted = await confirm({
       title: '¿Reasignar esta factura?',
-      message: `La factura ${ord.invoiceNumber} pasará de ${ord.consultantName} a ${consultant.name}. La comisión y la cartera cambian de dueña.`,
+      message: `La factura ${ord.invoiceNumber} pasará de ${ord.consultantName} a ${consultant.name}.`,
       confirmText: 'Sí, reasignar',
     });
     if (!accepted) return;
@@ -115,14 +117,20 @@ export const AdminSalesView: React.FC = () => {
               type="text"
               placeholder="Buscar por N° Factura, clienta o consultora..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
               className="w-full pl-10 pr-4 py-2 text-xs rounded-xl border border-stone-200 bg-stone-50/50"
             />
           </div>
           <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
             <select
               value={paymentFilter}
-              onChange={(e) => setPaymentFilter(e.target.value)}
+              onChange={(e) => {
+                setPaymentFilter(e.target.value);
+                setCurrentPage(1);
+              }}
               className="p-2 text-xs rounded-xl border border-stone-200 bg-stone-50/50 text-stone-700 font-medium"
             >
               <option value="todos">Todos los Pagos</option>
@@ -133,7 +141,10 @@ export const AdminSalesView: React.FC = () => {
             </select>
             <select
               value={deliveryFilter}
-              onChange={(e) => setDeliveryFilter(e.target.value)}
+              onChange={(e) => {
+                setDeliveryFilter(e.target.value);
+                setCurrentPage(1);
+              }}
               className="p-2 text-xs rounded-xl border border-stone-200 bg-stone-50/50 text-stone-700 font-medium"
             >
               <option value="todos">Todas las Entregas</option>
@@ -146,9 +157,9 @@ export const AdminSalesView: React.FC = () => {
         </div>
 
         <div className="bg-white rounded-3xl border border-stone-200/80 shadow-xs overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
             <table className="w-full text-xs text-left">
-              <thead className="bg-stone-50 text-stone-600 uppercase font-semibold text-[10px] border-b border-stone-200">
+              <thead className="sticky top-0 z-10 bg-stone-50/95 backdrop-blur text-stone-600 uppercase font-semibold text-[10px] border-b border-stone-200 shadow-2xs">
                 <tr>
                   <th className="py-3 px-4">Factura</th>
                   <th className="py-3 px-4">Clienta</th>
@@ -168,137 +179,36 @@ export const AdminSalesView: React.FC = () => {
                     </td>
                   </tr>
                 ) : (
-                  filteredOrders.map((ord) => (
-                    <tr key={ord.id} className="hover:bg-stone-50/50 transition-colors">
-                      <td className="py-3 px-4 font-mono font-bold text-stone-800">{ord.invoiceNumber}</td>
-                      <td className="py-3 px-4">
-                        <p className="font-semibold text-stone-900">{ord.clientName}</p>
-                        <p className="text-[11px] text-stone-400">{ord.clientPhone}</p>
-                      </td>
-                      <td className="py-3 px-4">
-                        <select
-                          value={ord.consultantId}
-                          onChange={(e) => void handleAssign(ord, e.target.value)}
-                          className="p-1.5 text-xs rounded-lg border border-stone-200 bg-stone-50 text-stone-800 font-medium"
-                        >
-                          {!consultants.some((c) => c.id === ord.consultantId) && (
-                            <option value={ord.consultantId}>{ord.consultantName}</option>
-                          )}
-                          {consultants.map((c) => (
-                            <option key={c.id} value={c.id}>
-                              {c.name.replace(/\s*\([^)]*\)\s*$/, '')}
-                              {c.role === 'LIDER_ZONA' ? ' · Líder' : ' · Consultora'}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="py-3 px-4 font-bold text-stone-900">{formatCop(ord.totalAmount)}</td>
-                      <td className="py-3 px-4">
-                        <span className="block font-semibold text-emerald-700">
-                          {formatCop(getPaidAmount(ord))}
-                        </span>
-                        <span className="text-[10px] text-stone-400">
-                          Saldo {formatCop(getBalance(ord))}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex flex-col items-start gap-1">
-                          <span
-                            className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${
-                              ord.paymentStatus === 'pagado'
-                                ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                                : ord.paymentStatus === 'anulada'
-                                  ? 'border-rose-200 bg-rose-50 text-rose-700'
-                                  : ord.paymentStatus === 'abono'
-                                    ? 'border-brand-gold/40 bg-[#FBF3D9] text-[#8A6D12]'
-                                    : 'border-stone-200 bg-stone-50 text-stone-600'
-                            }`}
-                          >
-                            {PAYMENT_STATUS_LABELS[ord.paymentStatus]}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setPaymentOrder(ord)}
-                            className="inline-flex cursor-pointer items-center gap-1 text-[10px] font-semibold text-brand-apricot hover:underline"
-                          >
-                            <Wallet className="h-3 w-3" />
-                            {ord.deliveryStatus === 'cancelado'
-                              ? 'Registrar devolución'
-                              : getBalance(ord) > 0
-                                ? 'Registrar abono'
-                                : 'Editar pagos'}
-                          </button>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        {ord.deliveryStatus === 'cancelado' ? (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-700">
-                            <Ban className="h-3 w-3" /> Cancelado
-                          </span>
-                        ) : (
-                          <select
-                            value={ord.deliveryStatus}
-                            onChange={(e) => {
-                              const status = e.target.value as DeliveryStatus;
-                              updateOrderStatus(ord.id, undefined, status);
-                              notify(
-                                `Entrega de ${ord.invoiceNumber} actualizada a ${
-                                  status === 'entregado'
-                                    ? 'entregado'
-                                    : status === 'camino'
-                                      ? 'en camino'
-                                      : 'en preparación'
-                                }.`,
-                                'info'
-                              );
-                            }}
-                            className={`p-1.5 text-[11px] rounded-lg font-semibold border ${
-                              ord.deliveryStatus === 'entregado' ? 'bg-blue-50 text-blue-800 border-blue-200' : 'bg-stone-50 text-stone-700 border-stone-200'
-                            }`}
-                          >
-                            <option value="preparacion">Preparación</option>
-                            <option value="camino">En Camino</option>
-                            <option value="entregado">Entregado</option>
-                          </select>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        <div className="flex flex-wrap items-center justify-center gap-1.5">
-                          <button
-                            onClick={() => setSelectedOrder(ord)}
-                            className="px-2.5 py-1.5 rounded-xl border border-stone-200 hover:bg-orange-50 hover:text-orange-600 text-stone-600 text-xs font-medium inline-flex items-center gap-1 transition-colors cursor-pointer"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                            <span>Ver Factura</span>
-                          </button>
-                          {ord.deliveryStatus === 'cancelado' ? (
-                            <button
-                              onClick={() => void handleReactivateOrder(ord)}
-                              className="px-2 py-1.5 rounded-xl border border-stone-200 text-stone-600 text-[11px] font-medium inline-flex items-center gap-1 hover:bg-stone-50 cursor-pointer"
-                              title="Reactivar factura"
-                            >
-                              <RotateCcw className="w-3.5 h-3.5" />
-                              <span>Reactivar</span>
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => void handleCancelOrder(ord)}
-                              className="px-2 py-1.5 rounded-xl border border-rose-200 text-rose-600 text-[11px] font-medium inline-flex items-center gap-1 hover:bg-rose-50 cursor-pointer"
-                              title="Anular factura por cancelación o devolución"
-                            >
-                              <Ban className="w-3.5 h-3.5" />
-                              <span>Anular</span>
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
+                  paginatedOrders.map((ord) => (
+                    <AdminSalesRow
+                      key={ord.id}
+                      order={ord}
+                      consultants={consultants}
+                      onAssign={handleAssign}
+                      onUpdateStatus={(id, status) => {
+                        updateOrderStatus(id, undefined, status);
+                        notify(`Entrega actualizada a ${status}.`, 'info');
+                      }}
+                      onCancel={handleCancelOrder}
+                      onReactivate={handleReactivateOrder}
+                      onSelectOrder={setSelectedOrder}
+                      onPaymentOrder={setPaymentOrder}
+                    />
                   ))
                 )}
               </tbody>
             </table>
           </div>
         </div>
+
+        <PaginationControls
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filteredOrders.length}
+          pageSize={PAGE_SIZE}
+          onPageChange={setCurrentPage}
+          itemName="facturas"
+        />
       </div>
 
       <RegisterPaymentModal
@@ -306,7 +216,6 @@ export const AdminSalesView: React.FC = () => {
         onClose={() => setPaymentOrder(null)}
         onSave={saveOrder}
       />
-
       <InvoiceModal order={selectedOrder} onClose={() => setSelectedOrder(null)} />
     </div>
   );

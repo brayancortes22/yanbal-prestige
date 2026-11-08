@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OutputCaching;
@@ -13,10 +14,12 @@ namespace YanbalPrestige.Api.Controllers;
 public class TipsController : ControllerBase
 {
     private readonly ITipService _tipService;
+    private readonly IAuditService _audit;
 
-    public TipsController(ITipService tipService)
+    public TipsController(ITipService tipService, IAuditService audit)
     {
         _tipService = tipService;
+        _audit = audit;
     }
 
     /// <summary>Listado público: solo consejos visibles.</summary>
@@ -49,7 +52,11 @@ public class TipsController : ControllerBase
             return BadRequest(new { message = "El título es obligatorio." });
         }
 
-        return Ok(await _tipService.SaveTipAsync(tip));
+        var r = await _tipService.SaveTipAsync(tip);
+        var actor = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+        await _audit.LogAsync(actor, "GUARDAR_TIP", "consejos", r.Id, new { r.Title, r.Category }, ip);
+        return Ok(r);
     }
 
     [HttpDelete("{id}")]
@@ -58,6 +65,9 @@ public class TipsController : ControllerBase
     {
         var success = await _tipService.DeleteTipAsync(id);
         if (!success) return NotFound();
+        var actor = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+        await _audit.LogAsync(actor, "ELIMINAR_TIP", "consejos", id, null, ip);
         return Ok(new { success = true });
     }
 }

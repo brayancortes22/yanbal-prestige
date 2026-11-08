@@ -26,9 +26,9 @@ export const UserTable: React.FC<UserTableProps> = ({
   onDelete,
 }) => {
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
       <table className="w-full text-left text-xs">
-        <thead className="border-b border-stone-100 bg-stone-50 font-semibold text-stone-500">
+        <thead className="sticky top-0 z-10 border-b border-stone-200 bg-stone-50/95 backdrop-blur font-semibold text-stone-500 shadow-2xs">
           <tr>
             <th className="p-4">Nombre</th>
             <th className="p-4">Correo</th>

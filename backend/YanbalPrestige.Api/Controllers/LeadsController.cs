@@ -15,11 +15,13 @@ public class LeadsController : ControllerBase
 {
     private readonly AppDbContext _context;
     private readonly ITurnstileService _turnstileService;
+    private readonly IAuditService _audit;
 
-    public LeadsController(AppDbContext context, ITurnstileService turnstileService)
+    public LeadsController(AppDbContext context, ITurnstileService turnstileService, IAuditService audit)
     {
         _context = context;
         _turnstileService = turnstileService;
+        _audit = audit;
     }
 
     [HttpGet]
@@ -38,14 +40,16 @@ public class LeadsController : ControllerBase
     [EnableRateLimiting("StrictLeadsLimiter")]
     public async Task<IActionResult> SubmitLead([FromBody] LeadProspect lead)
     {
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+
         // 1. Trampa Honeypot: Detección anti-scrapers y bots (Regla 8)
         if (!string.IsNullOrWhiteSpace(lead.CompanyWebsite) || !string.IsNullOrWhiteSpace(lead.TrapField))
         {
+            await _audit.LogAsync("bot", "HONEYPOT_DETECTADO", "prospectos_unete", null, new { lead.FullName, lead.TrapField }, ip);
             return BadRequest(new { message = "Detección de seguridad perimetral activada." });
         }
 
         // 2. Validación Cloudflare Turnstile Invisible (Regla 8)
-        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
         var isHuman = await _turnstileService.VerifyTokenAsync(lead.TurnstileToken, ip);
         if (!isHuman)
         {
@@ -63,7 +67,6 @@ public class LeadsController : ControllerBase
             return BadRequest(new { message = "Nombre y WhatsApp son requeridos." });
         }
 
-        // 4. Sanitización contra caracteres de control y longitudes seguras
         lead.FullName = Sanitize(lead.FullName, 150);
         lead.Phone = Sanitize(lead.Phone, 30);
         lead.City = Sanitize(lead.City, 100);
@@ -84,7 +87,6 @@ public class LeadsController : ControllerBase
         if (lead.RoleInterest is not ("consultora" or "directora" or "cliente"))
             return BadRequest(new { message = "Oportunidad de interés no válida." });
 
-        // 5. Evita duplicados por doble clic o reenvío (ventana de 5 minutos).
         var window = DateTime.UtcNow.AddMinutes(-5);
         var duplicated = await _context.Leads.AsNoTracking().AnyAsync(l =>
             l.Phone == lead.Phone && l.RoleInterest == lead.RoleInterest && l.CreatedAt >= window);
@@ -96,10 +98,12 @@ public class LeadsController : ControllerBase
         await _context.Leads.AddAsync(lead);
         await _context.SaveChangesAsync();
 
+        await _audit.LogAsync(lead.Email, "POSTULACION_UNETE", "prospectos_unete", lead.Id,
+            new { lead.FullName, lead.City, lead.RoleInterest, lead.Phone }, ip);
+
         return Ok(new { success = true, message = "Postulación registrada exitosamente." });
     }
 
-    /// <summary>Quita caracteres de control y recorta a la longitud máxima.</summary>
     private static string Sanitize(string value, int maxLength)
     {
         var clean = new string(value

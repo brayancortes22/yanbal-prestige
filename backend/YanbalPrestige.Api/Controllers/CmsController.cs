@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OutputCaching;
@@ -13,10 +14,12 @@ namespace YanbalPrestige.Api.Controllers;
 public class CmsController : ControllerBase
 {
     private readonly ICmsService _cmsService;
+    private readonly IAuditService _audit;
 
-    public CmsController(ICmsService cmsService)
+    public CmsController(ICmsService cmsService, IAuditService audit)
     {
         _cmsService = cmsService;
+        _audit = audit;
     }
 
     [HttpGet("slides")]
@@ -30,7 +33,14 @@ public class CmsController : ControllerBase
 
     [HttpDelete("slides/{id}")]
     [Authorize(Roles = AuthRoles.ContentManagers)]
-    public async Task<IActionResult> DeleteSlide(string id) => Ok(new { success = await _cmsService.DeleteHeroSlideAsync(id) });
+    public async Task<IActionResult> DeleteSlide(string id)
+    {
+        var s = await _cmsService.DeleteHeroSlideAsync(id);
+        var actor = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+        await _audit.LogAsync(actor, "ELIMINAR_SLIDE", "cms_slides", id, null, ip);
+        return Ok(new { success = s });
+    }
 
     [HttpGet("catalog")]
     [AllowAnonymous]
@@ -46,11 +56,25 @@ public class CmsController : ControllerBase
 
     [HttpPost("videos")]
     [Authorize(Roles = AuthRoles.ContentManagers)]
-    public async Task<IActionResult> SaveVideo([FromBody] VideoTip video) => Ok(await _cmsService.SaveVideoTipAsync(video));
+    public async Task<IActionResult> SaveVideo([FromBody] VideoTip video)
+    {
+        var r = await _cmsService.SaveVideoTipAsync(video);
+        var actor = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+        await _audit.LogAsync(actor, "GUARDAR_VIDEO", "cms_videos", r.Id, new { r.Title, r.Category }, ip);
+        return Ok(r);
+    }
 
     [HttpDelete("videos/{id}")]
     [Authorize(Roles = AuthRoles.ContentManagers)]
-    public async Task<IActionResult> DeleteVideo(string id) => Ok(new { success = await _cmsService.DeleteVideoTipAsync(id) });
+    public async Task<IActionResult> DeleteVideo(string id)
+    {
+        var s = await _cmsService.DeleteVideoTipAsync(id);
+        var actor = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+        await _audit.LogAsync(actor, "ELIMINAR_VIDEO", "cms_videos", id, null, ip);
+        return Ok(new { success = s });
+    }
 
     [HttpGet("events")]
     [AllowAnonymous]
@@ -59,9 +83,23 @@ public class CmsController : ControllerBase
 
     [HttpPost("events")]
     [Authorize(Roles = AuthRoles.ContentManagers)]
-    public async Task<IActionResult> SaveEvent([FromBody] EventItem eventItem) => Ok(await _cmsService.SaveEventAsync(eventItem));
+    public async Task<IActionResult> SaveEvent([FromBody] EventItem eventItem)
+    {
+        var r = await _cmsService.SaveEventAsync(eventItem);
+        var actor = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+        await _audit.LogAsync(actor, "GUARDAR_EVENTO", "eventos", r.Id, new { r.Title, r.Location, r.Date }, ip);
+        return Ok(r);
+    }
 
     [HttpDelete("events/{id}")]
     [Authorize(Roles = AuthRoles.ContentManagers)]
-    public async Task<IActionResult> DeleteEvent(string id) => Ok(new { success = await _cmsService.DeleteEventAsync(id) });
+    public async Task<IActionResult> DeleteEvent(string id)
+    {
+        var s = await _cmsService.DeleteEventAsync(id);
+        var actor = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+        await _audit.LogAsync(actor, "ELIMINAR_EVENTO", "eventos", id, null, ip);
+        return Ok(new { success = s });
+    }
 }

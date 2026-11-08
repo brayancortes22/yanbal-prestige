@@ -1,3 +1,4 @@
+using YanbalPrestige.Api.Services.Interfaces;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -30,8 +31,13 @@ public class OrdersController : ControllerBase
         };
 
     private readonly AppDbContext _db;
+    private readonly IAuditService _audit;
 
-    public OrdersController(AppDbContext db) => _db = db;
+    public OrdersController(AppDbContext db, IAuditService audit)
+    {
+        _db = db;
+        _audit = audit;
+    }
 
     private string CurrentUserId =>
         User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
@@ -281,6 +287,9 @@ public class OrdersController : ControllerBase
             InvoiceLock.Release();
         }
 
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+        await _audit.LogAsync(string.IsNullOrWhiteSpace(CurrentUserId) ? order.ClientEmail : CurrentUserId, "CREAR_PEDIDO", "pedidos", order.Id, new { order.InvoiceNumber, order.TotalAmount, order.ClientName, order.Source }, ip);
+
         return CreatedAtAction(nameof(GetById), new { id = order.Id }, MapToDto(order));
     }
 
@@ -328,6 +337,8 @@ public class OrdersController : ControllerBase
         order.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
+        var ipStatus = HttpContext.Connection.RemoteIpAddress?.ToString();
+        await _audit.LogAsync(CurrentUserId, "CAMBIO_ESTADO_PEDIDO", "pedidos", order.Id, new { order.InvoiceNumber, deliveryStatus = order.DeliveryStatus, paymentStatus = order.PaymentStatus }, ipStatus);
         return Ok(new { success = true, order.Id, order.PaymentStatus, order.DeliveryStatus });
     }
 
