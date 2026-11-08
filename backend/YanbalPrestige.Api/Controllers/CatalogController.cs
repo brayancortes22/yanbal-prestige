@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OutputCaching;
@@ -15,14 +16,17 @@ public class CatalogController : ControllerBase
 {
     private readonly ICatalogService _catalogService;
     private readonly IOutputCacheStore _cache;
+    private readonly IAuditService _audit;
 
-    public CatalogController(ICatalogService catalogService, IOutputCacheStore cache)
+    public CatalogController(ICatalogService catalogService, IOutputCacheStore cache, IAuditService audit)
     {
         _catalogService = catalogService;
         _cache = cache;
+        _audit = audit;
     }
 
-    /// <summary>Invalida el catálogo público tras crear, editar o borrar.</summary>
+    private string CurrentUserId => User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.Identity?.Name ?? "directora";
+
     private Task EvictCatalogAsync() =>
         _cache.EvictByTagAsync("catalog", HttpContext.RequestAborted).AsTask();
 
@@ -49,18 +53,47 @@ public class CatalogController : ControllerBase
     [Authorize(Roles = AuthRoles.ContentManagers)]
     public async Task<IActionResult> SaveProduct([FromBody] ProductCreateUpdateDto product)
     {
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
         var saved = await _catalogService.SaveProductAsync(product);
         await EvictCatalogAsync();
+
+        await _audit.LogAsync(CurrentUserId, "GUARDAR_PRODUCTO", "productos", saved.Id,
+            new { saved.Code, saved.Name, saved.Price, saved.Category }, ip);
+
         return Ok(saved);
+    }
+
+    [HttpPost("products/batch")]
+    [Authorize(Roles = AuthRoles.ContentManagers)]
+    public async Task<IActionResult> SaveProductBatch([FromBody] List<ProductCreateUpdateDto> products)
+    {
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var savedList = new List<Product>();
+
+        foreach (var p in products)
+        {
+            var saved = await _catalogService.SaveProductAsync(p);
+            savedList.Add(saved);
+        }
+
+        await EvictCatalogAsync();
+
+        await _audit.LogAsync(CurrentUserId, "IMPORTAR_LOTE_PRODUCTOS", "productos", null,
+            new { totalImportados = savedList.Count, skus = savedList.Select(s => s.Code).Take(10).ToList() }, ip);
+
+        return Ok(new { success = true, count = savedList.Count, products = savedList });
     }
 
     [HttpPatch("products/{id}/toggle")]
     [Authorize(Roles = AuthRoles.ContentManagers)]
     public async Task<IActionResult> ToggleProduct(string id)
     {
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
         var success = await _catalogService.ToggleProductStatusAsync(id);
         if (!success) return NotFound();
         await EvictCatalogAsync();
+
+        await _audit.LogAsync(CurrentUserId, "TOGGLE_PRODUCTO", "productos", id, null, ip);
         return Ok(new { success = true });
     }
 
@@ -68,9 +101,12 @@ public class CatalogController : ControllerBase
     [Authorize(Roles = AuthRoles.ContentManagers)]
     public async Task<IActionResult> DeleteProduct(string id)
     {
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
         var success = await _catalogService.DeleteProductAsync(id);
         if (!success) return NotFound();
         await EvictCatalogAsync();
+
+        await _audit.LogAsync(CurrentUserId, "ELIMINAR_PRODUCTO", "productos", id, null, ip);
         return Ok(new { success = true });
     }
 }

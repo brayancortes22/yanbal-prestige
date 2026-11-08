@@ -1,0 +1,8 @@
+# Yanbal Prestige - Divulgación Responsable de Seguridad (RFC 9116)
+Contact: mailto:seguridad@yanbalprestige.com
+Expires: 2027-12-31T23:59:59.000Z
+Preferred-Languages: es, en
+Canonical: https://yanbal-prestige-9g5o.vercel.app/.well-known/security.txt
+Policy: https://yanbal-prestige-9g5o.vercel.app/privacidad
+Acknowledgments: https://yanbal-prestige-9g5o.vercel.app/quienes-somos
+Hiring: https://yanbal-prestige-9g5o.vercel.app/unete
