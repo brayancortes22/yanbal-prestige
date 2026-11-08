@@ -54,7 +54,23 @@ Se ejecutó un refactor modular bajo la filosofía **Ponytail** (<150-200 línea
 
 ---
 
-## 3. Métricas de Calidad
+---
+
+## 3. Ecosistema Multi-Herramienta de Testing & Verificación Forense
+
+| Herramienta | Propósito / Alcance | Resultado / Métrica Validada |
+| :--- | :--- | :--- |
+| **k6 (Grafana Labs)** | Carga masiva, estrés extremo y ciclo de vida | **1,000 VUs** concurrentes soportados. Suite ull-lifecycle-all-entities.test.js: **1,601 de 1,601 checks aprobados (100.00%)**, 3,905 peticiones procesadas con 0.02% error. Transacciones atómicas consecutivas (FAC-202611-XXXX). |
+| **WebCheck** | Auditoría perimétrica de seguridad y cabeceras | Resueltas advertencias críticas: CSP estricto en ercel.json, X-Content-Type-Options: nosniff, X-Frame-Options: DENY, Permissions-Policy, Referrer-Policy, RFC 9116 (security.txt) y Social OpenGraph Tags. |
+| **Scrapling** | Simulación adversarial anti-bots y scrapers | Verificación de neutralización de bots de mutación y activación de trampas **Honeypot** (400 Bad Request + 145 eventos registrados en uditoria_eventos). |
+| **Playwright** | Pruebas E2E automatizadas semánticas | Page Object Model con selectores accesibles (getByRole), validación de flujos de catálogo y checkout en Desktop (1440px), Tablet (768px) y Mobile (390px). |
+| **Unlighthouse** | Auditoría global multi-ruta del frontend | Escaneo automatizado de todas las rutas (http://127.0.0.1:5173) evaluando Performance, Accesibilidad WCAG 2.2 AA, SEO y Buenas Prácticas. |
+| **TestSprite** | Pruebas E2E autónomas asistidas por IA | Exploración de user journeys en el frontend y generación dinámica de aserciones contra regresiones. |
+| **Chromium CDP** | QA visual interactivo en vivo | Panel integrado de Antigravity con captura del DOM y coordinación con el panel Inspector. |
+
+---
+
+## 4. Métricas de Calidad
 * **TypeScript:** 0 errores en compilación estricta (`npm run tsc -b`).
 * **Bundle:** Vite build completado en 1.10s - 1.54s.
 * **Trazabilidad Git:** Rama `development` sincronizada con commits semánticos y flujo estricto de 3 ramas (`development` ➔ `qa` ➔ `main`).
